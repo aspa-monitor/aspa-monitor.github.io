@@ -1,6 +1,6 @@
 """Assemble the deployable site: static pages from site/ plus generated data/.
 
-    python -m pipeline.build_site --ris-work work/ris --out _site
+    python -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --out _site
 """
 import argparse
 import json
@@ -8,6 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from pipeline import asnames
 from pipeline.ris import fetch, shard
 from pipeline.timefmt import now_ist
 
@@ -48,6 +49,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ris-work", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--asnames", type=Path, help="RIPE asn.txt for backup AS names (optional)")
     ap.add_argument("--budget-mb", type=int, default=DEFAULT_BUDGET_MB)
     args = ap.parse_args(argv)
 
@@ -56,6 +58,8 @@ def main(argv=None) -> int:
     shutil.copytree(REPO / "site", args.out)
     (args.out / ".nojekyll").write_text("")
     build_ris(args.ris_work, args.out / "data" / "ris")
+    if args.asnames:
+        asnames.build(args.asnames, args.out / "data" / "asnames")
 
     total_mb = dir_bytes(args.out) / 1e6
     print(f"site total: {total_mb:.1f} MB (budget {args.budget_mb} MB, Pages limit {PAGES_LIMIT_MB} MB)")

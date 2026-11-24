@@ -184,6 +184,7 @@ async function run(text, sourceName, { loadAllFor = null } = {}) {
     return;
   }
   q.text = q.isAddress ? text.trim() : formatPrefix(q.afi, q.net, q.len);
+  document.title = `${q.text} · Prefix lookup · ASPA Monitor`;
   const sources = sourceName === "all" ? manifest.sources : manifest.sources.filter((s) => s.name === sourceName);
   if (!sources.length) {
     results.innerHTML = `<p class="error">Unknown source "${esc(sourceName)}".</p>`;
@@ -250,7 +251,10 @@ document.querySelectorAll(".example").forEach((a) => a.addEventListener("click",
 window.addEventListener("popstate", () => {
   const { q, source } = current();
   go(q, source, false);
-  if (!q) results.innerHTML = "";
+  if (!q) {
+    results.innerHTML = "";
+    document.title = "Prefix lookup · ASPA Monitor";
+  }
 });
 
 (async function init() {

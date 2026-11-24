@@ -14,7 +14,9 @@ The public web portal of the ASPA Monitor project: https://aspa-monitor.github.i
   (longest match), IPv4 or IPv6. Shows each route's AS path (clean and raw), origin, path length, last change (IST),
   communities, OTC, aggregator, AS_SET members and flags with explanations, plus covering and more-specific prefixes
   and RIPEstat / bgp.tools links. Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
-  AS names are fetched live in the browser from the RIPEstat `as-overview` API and cached in `localStorage` for 7 days.
+  AS names are fetched live in the browser from the RIPEstat `as-overview` API (8 s timeout), cached in `localStorage`
+  for 7 days. If RIPEstat fails or has no name, the page uses the site's own copy of RIPE NCC's
+  [asn.txt](https://ftp.ripe.net/ripe/asnames/asn.txt) (all RIRs), shown in italics and cached for 1 day.
 - `/aspa/` — ASPA verdicts (later).
 
 ## How the data gets here
@@ -35,6 +37,7 @@ manifest.json                 sources, upstream generated_at / as_of, build time
 <source>/index.json           blocks per family: {"<id>": {"n": routes in file, "t": routes in subtree, "k": split bits}}
 <source>/meta.json            ris-routing-data meta for the source
 <source>/v4/<id>.json         one address block; v6/ likewise
+../asnames/<asn % 100>.json   backup AS names {"<asn>": "<name>"}, rebuilt every deploy (step skipped if asn.txt fails)
 ```
 Blocks: `root` holds IPv4 prefixes shorter than /8 (IPv6: /16). Then one block per IPv4 first octet / IPv6 first
 16 bits. A block with more than 4,000 routes is split by the next `k` bits (fewest bits that bring each child under
@@ -55,7 +58,8 @@ Every time a person sees is IST (UTC+05:30); JSON timestamps are ISO 8601 with `
 ## Local use
 ```bash
 python3 -m pipeline.ris.fetch download --work work/ris
-python3 -m pipeline.build_site --ris-work work/ris --out _site
+python3 -m pipeline.asnames download --out work/asn.txt
+python3 -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --out _site
 python3 -m http.server 8765 --directory _site      # http://localhost:8765/lookup/
 python3 -m unittest discover -s tests -t .
 node --test tests/js/*.test.mjs
@@ -65,4 +69,4 @@ No dependencies beyond the Python 3.12+ standard library (and Node 22 for the JS
 ## Setup (once)
 Repository Settings → Pages → Source: **GitHub Actions**. For the custom domain later
 (`aspa-monitor.gauravkansal.in`): add `site/CNAME`, a DNS `CNAME` record to `aspa-monitor.github.io`, and set the
-domain in the Pages settings.
+domain in the Pages settings, and change the `canonical` / `og:url` meta tags in `site/*.html`.

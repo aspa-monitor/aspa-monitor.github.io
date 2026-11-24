@@ -69,6 +69,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 .asnum { font-family: var(--mono); font-size: 0.9em; font-weight: 600; }
 .asname { font-size: 0.75em; color: var(--muted); overflow-wrap: anywhere; }
 .asname:empty { display: none; }
+.asname.backup { font-style: italic; }
 .asset { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; border: 1px dashed var(--muted); border-radius: 6px; padding: 2px 4px; }
 .community { background: var(--chip); border-radius: 4px; padding: 1px 5px; display: inline-block; margin: 1px 0; }
 .tag { font-size: 0.8em; background: var(--chip); border-radius: 4px; padding: 1px 6px; }

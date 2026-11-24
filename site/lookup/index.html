@@ -4,7 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Prefix lookup · ASPA Monitor</title>
-  <meta name="description" content="Look up a prefix or IP address in RIPE RIS routing data: AS paths, origin, communities, OTC, flags.">
+  <meta name="theme-color" content="#1f5fbf">
+  <meta name="description" content="Look up a prefix or IP address (IPv4/IPv6) in hourly RIPE RIS routing data: AS path, origin AS, communities, OTC, aggregator, AS_SET and flags, with covering and more-specific prefixes.">
+  <link rel="canonical" href="https://aspa-monitor.github.io/lookup/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ASPA Monitor">
+  <meta property="og:title" content="Prefix lookup · ASPA Monitor">
+  <meta property="og:description" content="Look up a prefix or IP address (IPv4/IPv6) in hourly RIPE RIS routing data: AS path, origin AS, communities, OTC, aggregator, AS_SET and flags, with covering and more-specific prefixes.">
+  <meta property="og:url" content="https://aspa-monitor.github.io/lookup/">
+  <meta name="twitter:card" content="summary">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/style.css">
   <script type="module" src="/assets/lookup.js"></script>
@@ -35,7 +43,8 @@
       <a class="example" href="?q=193.0.0.0/16" data-q="193.0.0.0/16">193.0.0.0/16</a>
     </p>
     <p class="muted small">A prefix gets an exact match (or the longest covering prefix if there is none);
-      an address gets the longest match. AS names come live from RIPEstat.</p>
+      an address gets the longest match. AS names come live from RIPEstat; if that fails, from
+      RIPE NCC's AS names list (shown in <i>italics</i>).</p>
     <div id="results" aria-live="polite"></div>
   </main>
   <footer>

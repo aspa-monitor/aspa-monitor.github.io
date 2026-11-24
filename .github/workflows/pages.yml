@@ -57,9 +57,14 @@ jobs:
         if: steps.check.outputs.changed == 'true'
         run: python -m pipeline.ris.fetch download --work work/ris
 
+      - name: Download backup AS names (RIPE NCC asn.txt)
+        if: steps.check.outputs.changed == 'true'
+        continue-on-error: true  # optional: the site still works with RIPEstat names only
+        run: python -m pipeline.asnames download --out work/asn.txt
+
       - name: Build site
         if: steps.check.outputs.changed == 'true'
-        run: python -m pipeline.build_site --ris-work work/ris --out _site
+        run: python -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --out _site
 
       - uses: actions/upload-pages-artifact@v4
         if: steps.check.outputs.changed == 'true'
