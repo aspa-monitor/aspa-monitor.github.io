@@ -29,13 +29,13 @@ jobs:
     outputs:
       deploy: ${{ steps.check.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
 
@@ -61,7 +61,7 @@ jobs:
         if: steps.check.outputs.changed == 'true'
         run: python -m pipeline.build_site --ris-work work/ris --out _site
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         if: steps.check.outputs.changed == 'true'
         with:
           path: _site

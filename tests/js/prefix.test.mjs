@@ -67,7 +67,7 @@ test("nodeId matches pipeline/ris/shard.py node_id", () => {
 });
 
 test("nodeRange inverts nodeId", () => {
-  for (const [afi, text, depth] of [[4, "103.160.0.0", 11], [4, "103.1.0.0", 16], [6, "2001:db8::", 20], [6, "2804::", 16]]) {
+  for (const [afi, text, depth] of [[4, "103.160.0.0", 11], [4, "103.1.0.0", 16], [6, "2001:db8::", 32], [6, "2001:d000::", 20], [6, "2804::", 16]]) {
     const addr = parseAddress(text).addr;
     const r = nodeRange(afi, nodeId(afi, addr, depth));
     assert.equal(r.depth, depth);
