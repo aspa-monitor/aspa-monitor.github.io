@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ASPA Monitor</title>
-  <meta name="theme-color" content="#1f5fbf">
+  <meta name="theme-color" content="#4f46e5">
   <meta name="description" content="Hourly BGP routing snapshots from RIPE RIS and ASPA path verification based on the RPKI: prefix lookup, AS paths, origins and route flags.">
   <link rel="canonical" href="https://aspa-monitor.gauravkansal.in/">
   <meta property="og:type" content="website">
@@ -14,9 +14,11 @@
   <meta property="og:url" content="https://aspa-monitor.gauravkansal.in/">
   <meta name="twitter:card" content="summary">
   <meta name="author" content="Gaurav Kansal">
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "ASPA Monitor", "url": "https://aspa-monitor.gauravkansal.in/", "description": "Hourly BGP routing snapshots from RIPE RIS and ASPA path verification based on the RPKI.", "author": {"@type": "Person", "name": "Gaurav Kansal"}, "creator": {"@type": "Person", "name": "Gaurav Kansal"}, "maintainer": {"@type": "Person", "name": "Gaurav Kansal"}}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "ASPA Monitor", "url": "https://aspa-monitor.gauravkansal.in/", "description": "Hourly BGP routing snapshots from RIPE RIS and ASPA path verification based on the RPKI.", "author": {"@type": "Person", "name": "Gaurav Kansal", "url": "https://www.gauravkansal.in/"}, "creator": {"@type": "Person", "name": "Gaurav Kansal", "url": "https://www.gauravkansal.in/"}, "maintainer": {"@type": "Person", "name": "Gaurav Kansal", "url": "https://www.gauravkansal.in/"}}</script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/style.css">
+  <script>try{var t=localStorage.getItem("theme");document.documentElement.dataset.theme=(!t||t==="auto")?(matchMedia("(prefers-color-scheme: dark)").matches?"midnight":"daylight"):t}catch(e){}</script>
+  <script type="module" src="/assets/theme.js"></script>
   <script type="module" src="/assets/home.js"></script>
 </head>
 <body>
@@ -25,7 +27,7 @@
     <nav><a href="/lookup/">Prefix lookup</a><a href="/aspa/">ASPA</a></nav>
   </header>
   <main>
-    <h1>ASPA Monitor</h1>
+    <h1 class="hero">ASPA Monitor</h1>
     <p class="lead">Hourly BGP routing snapshots from RIPE RIS, and (soon) ASPA path verification results
       based on the RPKI.</p>
 
@@ -59,7 +61,7 @@
     </ul>
   </main>
   <footer>
-    <p>Designed, developed and maintained by <strong>Gaurav Kansal</strong>.</p>
+    <p class="credit">Designed, developed and maintained by <a href="https://www.gauravkansal.in/" rel="author">Gaurav Kansal</a>.</p>
     <p class="disclaimer"><strong>Disclaimer:</strong> this is a best-effort project, provided as is and without
       any warranty. Data can be delayed, incomplete or wrong. Check important findings against other sources
       before acting on them.</p>

@@ -19,6 +19,8 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   for 7 days. If RIPEstat fails or has no name, the page uses the site's own copy of RIPE NCC's
   [asn.txt](https://ftp.ripe.net/ripe/asnames/asn.txt) (all RIRs), shown in italics and cached for 1 day.
 - `/aspa/` — ASPA verdicts (later).
+- Colour themes: Auto (follows the system), Daylight, Midnight, Ocean, Sand. Picker in the header (`site/assets/theme.js`),
+  saved in `localStorage`; theme colours are CSS variables per `[data-theme]` in `site/assets/style.css`.
 
 ## How the data gets here
 Browsers can't read GitHub Release assets (no CORS headers), so `.github/workflows/pages.yml` copies them server-side
