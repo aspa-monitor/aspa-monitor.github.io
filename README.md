@@ -58,7 +58,7 @@ python3 -m pipeline.ris.fetch download --work work/ris
 python3 -m pipeline.build_site --ris-work work/ris --out _site
 python3 -m http.server 8765 --directory _site      # http://localhost:8765/lookup/
 python3 -m unittest discover -s tests -t .
-node --test tests/js/
+node --test tests/js/*.test.mjs
 ```
 No dependencies beyond the Python 3.12+ standard library (and Node 22 for the JS tests).
 

@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Only so Node treats site/assets/*.js as ES modules in tests/js. No dependencies."
+}

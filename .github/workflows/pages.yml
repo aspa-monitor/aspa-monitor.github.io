@@ -42,7 +42,7 @@ jobs:
       - name: Tests
         run: |
           python -m unittest discover -s tests -t .
-          node --test tests/js/
+          node --test tests/js/*.test.mjs
 
       - name: Check for new data
         id: check
