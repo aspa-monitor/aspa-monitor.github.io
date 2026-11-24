@@ -1,0 +1,79 @@
+name: Build and deploy site
+
+# Hourly at :35 UTC (:05 IST), after ris-routing-data's :20 UTC run.
+# Scheduled runs deploy only when the upstream release is newer than the live site;
+# pushes and manual runs always rebuild. Nothing is committed: data lives only in the Pages artifact.
+on:
+  schedule:
+    - cron: "35 * * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  LIVE_MANIFEST_URL: https://aspa-monitor.github.io/data/ris/manifest.json
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      deploy: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Tests
+        run: |
+          python -m unittest discover -s tests -t .
+          node --test tests/js/
+
+      - name: Check for new data
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            python -m pipeline.ris.fetch check --live-url "$LIVE_MANIFEST_URL"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download ris-routing-data release
+        if: steps.check.outputs.changed == 'true'
+        run: python -m pipeline.ris.fetch download --work work/ris
+
+      - name: Build site
+        if: steps.check.outputs.changed == 'true'
+        run: python -m pipeline.build_site --ris-work work/ris --out _site
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.check.outputs.changed == 'true'
+        with:
+          path: _site
+          retention-days: 1
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

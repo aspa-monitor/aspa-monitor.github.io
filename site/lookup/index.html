@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prefix lookup · ASPA Monitor</title>
+  <meta name="description" content="Look up a prefix or IP address in RIPE RIS routing data: AS paths, origin, communities, OTC, flags.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script type="module" src="/assets/lookup.js"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">ASPA Monitor</a>
+    <nav><a href="/lookup/" aria-current="page">Prefix lookup</a><a href="/aspa/">ASPA</a></nav>
+  </header>
+  <main>
+    <h1>Prefix lookup</h1>
+    <p id="freshness" class="banner">Loading data manifest…</p>
+    <form id="lookup-form" class="lookup" autocomplete="off">
+      <label class="field grow">
+        <span>Prefix or IP address</span>
+        <input id="q" name="q" type="text" spellcheck="false" placeholder="1.10.10.0/24, 8.8.8.8 or 2001:4860:4860::8888" required>
+      </label>
+      <label class="field">
+        <span>Source</span>
+        <select id="source" name="source"></select>
+      </label>
+      <button type="submit">Look up</button>
+    </form>
+    <p class="examples muted">Examples:
+      <a class="example" href="?q=1.10.10.0/24" data-q="1.10.10.0/24">1.10.10.0/24</a> ·
+      <a class="example" href="?q=1.1.1.1" data-q="1.1.1.1">1.1.1.1</a> ·
+      <a class="example" href="?q=2001:4860:4860::8888" data-q="2001:4860:4860::8888">2001:4860:4860::8888</a> ·
+      <a class="example" href="?q=193.0.0.0/16" data-q="193.0.0.0/16">193.0.0.0/16</a>
+    </p>
+    <p class="muted small">A prefix gets an exact match (or the longest covering prefix if there is none);
+      an address gets the longest match. AS names come live from RIPEstat.</p>
+    <div id="results" aria-live="polite"></div>
+  </main>
+  <footer>
+    Routing data: <a href="https://ris.ripe.net/">RIPE NCC RIS</a>, processed by
+    <a href="https://github.com/aspa-monitor/ris-routing-data">aspa-monitor/ris-routing-data</a>.
+    Site source: <a href="https://github.com/aspa-monitor/aspa-monitor.github.io">aspa-monitor.github.io</a>.
+    Times are IST (UTC+05:30).
+  </footer>
+</body>
+</html>

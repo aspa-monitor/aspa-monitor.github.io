@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASPA Monitor</title>
+  <meta name="description" content="Public BGP routing and ASPA validation data from RIPE RIS and the RPKI.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script type="module" src="/assets/home.js"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">ASPA Monitor</a>
+    <nav><a href="/lookup/">Prefix lookup</a><a href="/aspa/">ASPA</a></nav>
+  </header>
+  <main>
+    <h1>ASPA Monitor</h1>
+    <p class="lead">Hourly BGP routing snapshots from RIPE RIS, and (soon) ASPA path verification results
+      based on the RPKI.</p>
+
+    <div class="cards">
+      <a class="card" href="/lookup/">
+        <h2>Prefix lookup →</h2>
+        <p>Find the routes for a prefix or IP address: AS path, origin, communities, OTC, aggregator,
+          flags, covering and more-specific prefixes.</p>
+      </a>
+      <div class="card disabled">
+        <h2>ASPA verdicts</h2>
+        <p>ASPA verification of observed AS paths (draft-ietf-sidrops-aspa-verification). Coming later.</p>
+      </div>
+    </div>
+
+    <h2>Data sources</h2>
+    <p id="freshness" class="banner">Loading data manifest…</p>
+    <table class="list" id="sources">
+      <thead><tr><th>Source</th><th>Collector</th><th>Peer</th><th class="num">Routes</th><th>Data as of</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h2>How it works</h2>
+    <ul>
+      <li><a href="https://github.com/aspa-monitor/ris-routing-data">ris-routing-data</a> turns RIS dumps and
+        5-minute updates into an hourly routing snapshot, published as GitHub Releases.</li>
+      <li><a href="https://github.com/aspa-monitor/rpki-aspa-data">rpki-aspa-data</a> publishes validated ASPA objects.</li>
+      <li><a href="https://github.com/aspa-monitor/aspa-validation">aspa-validation</a> combines both into ASPA verdicts.</li>
+      <li>This site downloads those releases every hour, splits them into small files by address block
+        and serves them as static pages (<a href="https://github.com/aspa-monitor/aspa-monitor.github.io">source</a>).</li>
+    </ul>
+  </main>
+  <footer>Routing data: <a href="https://ris.ripe.net/">RIPE NCC RIS</a>. Times are IST (UTC+05:30).</footer>
+</body>
+</html>
