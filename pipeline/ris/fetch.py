@@ -17,7 +17,7 @@ from pipeline.timefmt import parse_iso
 
 RELEASE_BASE = "https://github.com/aspa-monitor/ris-routing-data/releases/download/latest/"
 SUPPORTED_SCHEMA = {1}
-USER_AGENT = "aspa-monitor-portal (+https://aspa-monitor.github.io/)"
+USER_AGENT = "aspa-monitor-portal (+https://aspa-monitor.gauravkansal.in/)"
 
 
 class SchemaError(RuntimeError):

@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  LIVE_MANIFEST_URL: https://aspa-monitor.github.io/data/ris/manifest.json
+  LIVE_MANIFEST_URL: https://aspa-monitor.gauravkansal.in/data/ris/manifest.json
 
 jobs:
   build:

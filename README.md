@@ -1,6 +1,7 @@
 # aspa-monitor.github.io
 
-The public web portal of the ASPA Monitor project: https://aspa-monitor.github.io/
+The public web portal of the ASPA Monitor project: **https://aspa-monitor.gauravkansal.in/**
+(`https://aspa-monitor.github.io/` redirects there).
 
 | Repo | Role |
 |---|---|
@@ -25,7 +26,7 @@ and deploys GitHub Pages from Actions. **Nothing is committed**: the data only e
 
 1. Runs hourly at `:35 UTC` (`:05 IST`), on push to `main`, and manually.
    Scheduled runs first compare the upstream `manifest.json` `generated_at` with the one the live site was built from
-   (`/data/ris/manifest.json`) and skip the deploy if nothing is new.
+   (`https://aspa-monitor.gauravkansal.in/data/ris/manifest.json`) and skip the deploy if nothing is new.
 2. `pipeline.ris.fetch` downloads `manifest.json`, checks `schema_version` (only `1` is supported; anything else fails
    the job and the old site stays up) and downloads every source's routes/paths/meta, checking size and SHA-256.
 3. `pipeline.build_site` copies `site/` and writes `data/ris/` with `pipeline.ris.shard`, then fails if the site is
@@ -67,6 +68,11 @@ node --test tests/js/*.test.mjs
 No dependencies beyond the Python 3.12+ standard library (and Node 22 for the JS tests).
 
 ## Setup (once)
-Repository Settings → Pages → Source: **GitHub Actions**. For the custom domain later
-(`aspa-monitor.gauravkansal.in`): add `site/CNAME`, a DNS `CNAME` record to `aspa-monitor.github.io`, and set the
-domain in the Pages settings, and change the `canonical` / `og:url` meta tags and JSON-LD `url`s in `site/*.html`, plus `site/robots.txt` and `site/sitemap.xml`.
+- Repository Settings → Pages → Source: **GitHub Actions**.
+- Custom domain `aspa-monitor.gauravkansal.in`: DNS `CNAME` record → `aspa-monitor.github.io`, domain set in
+  Settings → Pages (with "Enforce HTTPS"). With Actions deployments GitHub ignores a `CNAME` file, so there is none.
+- The domain is hard-coded in: `site/*.html` (`canonical`, `og:url`, JSON-LD `url`), `site/robots.txt`,
+  `site/sitemap.xml`, `LIVE_MANIFEST_URL` in `.github/workflows/pages.yml` and `USER_AGENT` in `pipeline/ris/fetch.py`.
+  Pages and data use root-relative links (`/lookup/`, `/data/...`), so nothing else changes with the domain.
+
+See [TODO.md](TODO.md) for planned work.

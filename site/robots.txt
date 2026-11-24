@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /data/
 
-Sitemap: https://aspa-monitor.github.io/sitemap.xml
+Sitemap: https://aspa-monitor.gauravkansal.in/sitemap.xml
