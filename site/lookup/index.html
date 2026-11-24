@@ -13,6 +13,8 @@
   <meta property="og:description" content="Look up a prefix or IP address (IPv4/IPv6) in hourly RIPE RIS routing data: AS path, origin AS, communities, OTC, aggregator, AS_SET and flags, with covering and more-specific prefixes.">
   <meta property="og:url" content="https://aspa-monitor.github.io/lookup/">
   <meta name="twitter:card" content="summary">
+  <meta name="author" content="Gaurav Kansal">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "ASPA Monitor prefix lookup", "url": "https://aspa-monitor.github.io/lookup/", "applicationCategory": "Network tool", "operatingSystem": "Any (web browser)", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "description": "Look up a prefix or IP address in hourly RIPE RIS routing data: AS path, origin AS, communities, OTC, aggregator and flags.", "author": {"@type": "Person", "name": "Gaurav Kansal"}, "creator": {"@type": "Person", "name": "Gaurav Kansal"}, "isPartOf": {"@type": "WebSite", "name": "ASPA Monitor", "url": "https://aspa-monitor.github.io/"}}</script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/style.css">
   <script type="module" src="/assets/lookup.js"></script>
@@ -38,9 +40,7 @@
     </form>
     <p class="examples muted">Examples:
       <a class="example" href="?q=1.10.10.0/24" data-q="1.10.10.0/24">1.10.10.0/24</a> ·
-      <a class="example" href="?q=1.1.1.1" data-q="1.1.1.1">1.1.1.1</a> ·
-      <a class="example" href="?q=2001:4860:4860::8888" data-q="2001:4860:4860::8888">2001:4860:4860::8888</a> ·
-      <a class="example" href="?q=193.0.0.0/16" data-q="193.0.0.0/16">193.0.0.0/16</a>
+      <a class="example" href="?q=2409::1/48" data-q="2409::1/48">2409::1/48</a>
     </p>
     <p class="muted small">A prefix gets an exact match (or the longest covering prefix if there is none);
       an address gets the longest match. AS names come live from RIPEstat; if that fails, from
@@ -48,10 +48,15 @@
     <div id="results" aria-live="polite"></div>
   </main>
   <footer>
-    Routing data: <a href="https://ris.ripe.net/">RIPE NCC RIS</a>, processed by
-    <a href="https://github.com/aspa-monitor/ris-routing-data">aspa-monitor/ris-routing-data</a>.
-    Site source: <a href="https://github.com/aspa-monitor/aspa-monitor.github.io">aspa-monitor.github.io</a>.
-    Times are IST (UTC+05:30).
+    <p>Designed, developed and maintained by <strong>Gaurav Kansal</strong>.</p>
+    <p class="disclaimer"><strong>Disclaimer:</strong> this is a best-effort project, provided as is and without
+      any warranty. Data can be delayed, incomplete or wrong. Check important findings against other sources
+      before acting on them.</p>
+    <p>Routing data: <a href="https://ris.ripe.net/">RIPE NCC RIS</a>, processed by
+      <a href="https://github.com/aspa-monitor/ris-routing-data">ris-routing-data</a>. AS names:
+      <a href="https://stat.ripe.net/">RIPEstat</a> and RIPE NCC. Source code:
+      <a href="https://github.com/aspa-monitor/aspa-monitor.github.io">aspa-monitor.github.io</a>.
+      Times are IST (UTC+05:30).</p>
   </footer>
 </body>
 </html>

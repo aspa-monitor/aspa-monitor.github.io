@@ -69,4 +69,4 @@ No dependencies beyond the Python 3.12+ standard library (and Node 22 for the JS
 ## Setup (once)
 Repository Settings → Pages → Source: **GitHub Actions**. For the custom domain later
 (`aspa-monitor.gauravkansal.in`): add `site/CNAME`, a DNS `CNAME` record to `aspa-monitor.github.io`, and set the
-domain in the Pages settings, and change the `canonical` / `og:url` meta tags in `site/*.html`.
+domain in the Pages settings, and change the `canonical` / `og:url` meta tags and JSON-LD `url`s in `site/*.html`, plus `site/robots.txt` and `site/sitemap.xml`.
