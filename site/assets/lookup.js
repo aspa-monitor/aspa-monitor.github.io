@@ -121,7 +121,7 @@ function sourceLabel(src) {
   return `${src.collector} · peer AS${src.peer_asn}`;
 }
 
-function renderSource(res, q, src) {
+function renderSource(res, q, src, multi) {
   const { match, exact, covering, moreSpecifics, unloaded, moreBase } = res;
   const asOf = new Date(src.as_of);
   let head;
@@ -149,7 +149,7 @@ function renderSource(res, q, src) {
   }
 
   return `<section class="source-result" data-source="${esc(src.name)}">
-    <h2>${esc(sourceLabel(src))} <span class="muted small">data as of ${esc(formatIST(asOf))}</span></h2>
+    ${multi ? `<h2>${esc(sourceLabel(src))} <span class="muted small">data as of ${esc(formatIST(asOf))}</span></h2>` : ""}
     ${head}
     ${matchHtml}
     <h3>Covering prefixes (less specific)</h3>
@@ -173,7 +173,7 @@ function setBanner() {
 
 function fillSources() {
   const opts = manifest.sources.map((s) => `<option value="${esc(s.name)}">${esc(sourceLabel(s))}</option>`);
-  if (manifest.sources.length > 1) opts.unshift('<option value="all">All sources</option>');
+  opts.unshift('<option value="all">All sources</option>');
   select.innerHTML = opts.join("");
 }
 
@@ -198,9 +198,9 @@ async function run(text, sourceName, { loadAllFor = null } = {}) {
   const sections = await Promise.all(sources.map(async (src) => {
     try {
       const res = await lookup(src.name, q, { loadAll: loadAllFor === src.name || loadAllFor === "all" });
-      return renderSource(res, q, src);
+      return renderSource(res, q, src, sources.length > 1);
     } catch (e) {
-      return `<section class="source-result"><h2>${esc(sourceLabel(src))}</h2><p class="error">Could not load data: ${esc(e.message)}</p></section>`;
+      return `<section class="source-result">${sources.length > 1 ? `<h2>${esc(sourceLabel(src))}</h2>` : ""}<p class="error">Could not load data: ${esc(e.message)}</p></section>`;
     }
   }));
   results.innerHTML = `${note}<p class="muted">Results for ${esc(qlabel)}.</p>${sections.join("")}`;

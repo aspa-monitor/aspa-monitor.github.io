@@ -3,7 +3,9 @@
     python -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --out _site
 """
 import argparse
+import hashlib
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -19,6 +21,26 @@ DEFAULT_BUDGET_MB = 900
 
 def dir_bytes(path: Path) -> int:
     return sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
+
+
+def stamp_assets(out: Path) -> str:
+    """Add ?v=<hash of assets> to asset URLs, so a deploy never mixes cached old and new files
+    (Pages lets browsers cache for 10 minutes)."""
+    assets = out / "assets"
+    h = hashlib.sha256()
+    for f in sorted(assets.rglob("*")):
+        if f.is_file():
+            h.update(f.name.encode() + f.read_bytes())
+    v = h.hexdigest()[:10]
+    for page in out.rglob("*.html"):
+        text = page.read_text()
+        text = re.sub(r'(/assets/[\w.-]+\.(?:js|css))"', rf'\1?v={v}"', text)
+        page.write_text(text)
+    for js in assets.glob("*.js"):
+        text = js.read_text()
+        text = re.sub(r'from "(\./[\w.-]+\.js)"', rf'from "\1?v={v}"', text)
+        js.write_text(text)
+    return v
 
 
 def build_ris(work: Path, out: Path) -> dict:
@@ -57,6 +79,7 @@ def main(argv=None) -> int:
         shutil.rmtree(args.out)
     shutil.copytree(REPO / "site", args.out)
     (args.out / ".nojekyll").write_text("")
+    print(f"asset version {stamp_assets(args.out)}")
     build_ris(args.ris_work, args.out / "data" / "ris")
     if args.asnames:
         asnames.build(args.asnames, args.out / "data" / "asnames")
