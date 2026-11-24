@@ -98,7 +98,6 @@ function routeCard(r) {
   if (r.setMembers) rows.push(["AS_SET members", splitList(r.setMembers).map(asChip).join(" ")]);
   rows.push(["Flags", flagsHtml(r.flags)]);
   return `<div class="route">
-    <div class="route-head">Peer ${asChip(r.peerAsn)} <code>${esc(r.peerIp)}</code></div>
     <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
   </div>`;
 }
