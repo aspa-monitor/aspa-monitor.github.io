@@ -1,4 +1,4 @@
-# aspa-monitor.github.io
+# ASPA Monitor
 
 The public web portal of the ASPA Monitor project: **https://aspa-monitor.gauravkansal.in/**
 (`https://aspa-monitor.github.io/` redirects there).
