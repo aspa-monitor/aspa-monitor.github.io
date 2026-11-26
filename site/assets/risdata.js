@@ -39,6 +39,25 @@ export function getGzJSON(url) {
   return cache.get(url);
 }
 
+// Where each RIS collector is, used when the manifest doesn't say (collector_location).
+const RIS_LOCATION = {
+  rrc00: "Amsterdam", rrc01: "London", rrc03: "Amsterdam", rrc04: "Geneva", rrc05: "Vienna", rrc06: "Tokyo",
+  rrc07: "Stockholm", rrc10: "Milan", rrc11: "New York", rrc12: "Frankfurt", rrc13: "Moscow", rrc14: "Palo Alto",
+  rrc15: "São Paulo", rrc16: "Miami", rrc18: "Barcelona", rrc19: "Johannesburg", rrc20: "Zurich", rrc21: "Paris",
+  rrc22: "Bucharest", rrc23: "Singapore", rrc24: "Montevideo", rrc25: "Amsterdam", rrc26: "Dubai",
+};
+
+/** "AT&T (AS7018)" when the manifest has a display name, else "rrc00 · peer AS7018". */
+export function sourceLabel(src) {
+  return src.display_name ? `${src.display_name} (AS${src.peer_asn})` : `${src.collector} · peer AS${src.peer_asn}`;
+}
+
+/** "rrc00 · Amsterdam" (or just "rrc00" for an unknown collector). */
+export function collectorLabel(src) {
+  const where = src.collector_location || RIS_LOCATION[src.collector];
+  return where ? `${src.collector} · ${where}` : src.collector;
+}
+
 export const loadManifest = () => getJSON(`${DATA_ROOT}manifest.json`);
 export const loadIndex = (source) => getJSON(`${DATA_ROOT}${source}/index.json`);
 

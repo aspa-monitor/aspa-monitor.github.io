@@ -1,5 +1,5 @@
 import { parseQuery, formatPrefix } from "./prefix.js";
-import { loadManifest, lookup, MAX_LOAD_FILES } from "./risdata.js";
+import { loadManifest, lookup, MAX_LOAD_FILES, sourceLabel, collectorLabel } from "./risdata.js";
 import { FLAG_INFO, splitList } from "./flags.js";
 import { fillNames } from "./asnames.js";
 import { formatIST, formatUnixIST, ago } from "./timefmt.js";
@@ -107,9 +107,6 @@ function prefixTable(groups, source, emptyText) {
     `<tbody>${body}</tbody></table>${more}`;
 }
 
-function sourceLabel(src) {
-  return `${src.collector} · peer AS${src.peer_asn}`;
-}
 
 function renderSource(res, q, src, multi) {
   const { match, exact, covering, moreSpecifics, unloaded, moreBase } = res;
@@ -139,7 +136,7 @@ function renderSource(res, q, src, multi) {
   }
 
   return `<section class="source-result" data-source="${esc(src.name)}">
-    ${multi ? `<h2>${esc(sourceLabel(src))} <span class="muted small">data as of ${esc(formatIST(asOf))}</span></h2>` : ""}
+    ${multi ? `<h2>${esc(sourceLabel(src))} <span class="muted small">${esc(collectorLabel(src))} · data as of ${esc(formatIST(asOf))}</span></h2>` : ""}
     ${head}
     ${matchHtml}
     <h3>Covering prefixes (less specific)</h3>
@@ -161,9 +158,15 @@ function setBanner() {
 }
 
 function fillSources() {
-  const opts = manifest.sources.map((s) => `<option value="${esc(s.name)}">${esc(sourceLabel(s))}</option>`);
-  opts.unshift('<option value="all">All sources</option>');
-  select.innerHTML = opts.join("");
+  // Grouped by collector, in manifest order.
+  const groups = new Map();
+  for (const s of manifest.sources) {
+    const k = collectorLabel(s);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(`<option value="${esc(s.name)}">${esc(sourceLabel(s))}</option>`);
+  }
+  select.innerHTML = '<option value="all">All sources</option>' +
+    [...groups].map(([k, opts]) => `<optgroup label="${esc(k)}">${opts.join("")}</optgroup>`).join("");
 }
 
 async function run(text, sourceName, { loadAllFor = null } = {}) {

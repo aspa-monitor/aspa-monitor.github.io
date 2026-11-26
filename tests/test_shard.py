@@ -83,9 +83,12 @@ class ShardSourceTest(unittest.TestCase):
                      "p1\t7018 13335\t7018 13335 13335\t2\t13335\t\t\t1\t1\n"
                      "p2\t7018 1299 {23969,65000}\t7018 1299 {65000,23969}\t3\t\tas_set,private\t23969 65000\t1\t0\n")
             src = {"name": "t_src", "collector": "rrc00", "peer_asn": 7018, "as_of": "2026-11-24T21:15:00+05:30",
+                   "display_name": "AT&T",
                    "files": {"routes": {"asset": "r.tsv.gz"}, "paths": {"asset": "p.tsv.gz"}}}
             summary = shard.shard_source(src, work, out)
             self.assertEqual(summary["routes"], 3)
+            self.assertEqual(summary["display_name"], "AT&T")
+            self.assertIsNone(summary["collector_location"])  # optional upstream field
 
             index = json.loads((out / "t_src" / "index.json").read_text())
             self.assertEqual(index["peers"], ["12.0.1.63", "2001:1890:111d:1::63"])

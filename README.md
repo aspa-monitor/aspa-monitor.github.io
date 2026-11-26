@@ -38,6 +38,8 @@ and deploys GitHub Pages from Actions. **Nothing is committed**: the data only e
 ## Data layout (`/data/ris/`)
 ```
 manifest.json                 sources, upstream generated_at / as_of, build time (IST)
+                              (per source, optional display_name / collector_location from ris-routing-data:
+                              the page shows "AT&T (AS7018)", grouped by "rrc00 · Amsterdam"; else "rrc00 · peer AS7018")
 <source>/index.json           blocks per family: {"<id>": {"n": routes in file, "t": routes in subtree, "k": split bits}}
 <source>/meta.json            ris-routing-data meta for the source
 <source>/v4/<id>.json.gz      one address block, gzip-compressed JSON (the page decompresses it); v6/ likewise

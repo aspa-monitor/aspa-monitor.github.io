@@ -221,6 +221,9 @@ def shard_source(source: dict, work: Path, out: Path) -> dict:
         "name": name,
         "collector": source.get("collector"),
         "peer_asn": source.get("peer_asn"),
+        # Optional, from ris-routing-data's sources config; the page falls back to "rrc00 · peer AS7018".
+        "display_name": source.get("display_name"),
+        "collector_location": source.get("collector_location"),
         "as_of": source["as_of"],
         "routes": index["counts"]["routes"],
         "v4": index["counts"]["v4"],
