@@ -5,6 +5,7 @@
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import sys
@@ -43,7 +44,38 @@ def stamp_assets(out: Path) -> str:
     return v
 
 
-def build_ris(work: Path, out: Path) -> dict:
+PEER_COLOURS = 8  # site/assets/style.css --peer-1 .. --peer-8
+
+
+def assign_colours(names: list, previous: dict) -> dict:
+    """Colour slot per source. A source keeps the slot it had on the live site, so removing a peer
+    never repaints the others; new sources take the lowest free slot (None once all 8 are used)."""
+    slots, used = {}, set()
+    for name in names:
+        s = previous.get(name)
+        if isinstance(s, int) and 0 <= s < PEER_COLOURS and s not in used:
+            slots[name] = s
+            used.add(s)
+    free = [s for s in range(PEER_COLOURS) if s not in used]
+    for name in names:
+        if name not in slots:
+            slots[name] = free.pop(0) if free else None
+    return slots
+
+
+def live_colours(url: str) -> dict:
+    """{source name: colour slot} from the live site's manifest; {} if it can't be read."""
+    if not url:
+        return {}
+    try:
+        live = json.loads(fetch._get(url, timeout=30, tries=2))
+        return {s["name"]: s.get("colour") for s in live.get("sources", [])}
+    except Exception as e:
+        print(f"warning: live manifest not readable ({e}); peer colours assigned in manifest order")
+        return {}
+
+
+def build_ris(work: Path, out: Path, previous_colours: dict = None) -> dict:
     upstream = json.loads((work / "manifest.json").read_text())
     fetch.check_manifest(upstream)
     sources = []
@@ -52,6 +84,9 @@ def build_ris(work: Path, out: Path) -> dict:
         print(f"{summary['name']}: {summary['routes']} routes, {summary['files']} files, "
               f"{summary['site_bytes'] / 1e6:.1f} MB")
         sources.append(summary)
+    colours = assign_colours([s["name"] for s in sources], previous_colours or {})
+    for s in sources:
+        s["colour"] = colours[s["name"]]
     manifest = {
         "schema_version": 1,
         "built_at": now_ist(),
@@ -73,6 +108,8 @@ def main(argv=None) -> int:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--asnames", type=Path, help="RIPE asn.txt for backup AS names (optional)")
     ap.add_argument("--budget-mb", type=int, default=DEFAULT_BUDGET_MB)
+    ap.add_argument("--live-manifest-url", default=os.environ.get("LIVE_MANIFEST_URL", ""),
+                    help="live site's data/ris/manifest.json, to keep each peer's graph colour")
     args = ap.parse_args(argv)
 
     if args.out.exists():
@@ -80,7 +117,7 @@ def main(argv=None) -> int:
     shutil.copytree(REPO / "site", args.out)
     (args.out / ".nojekyll").write_text("")
     print(f"asset version {stamp_assets(args.out)}")
-    build_ris(args.ris_work, args.out / "data" / "ris")
+    build_ris(args.ris_work, args.out / "data" / "ris", live_colours(args.live_manifest_url))
     if args.asnames:
         asnames.build(args.asnames, args.out / "data" / "asnames")
 

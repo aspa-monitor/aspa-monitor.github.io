@@ -1,6 +1,6 @@
 // AS path graph: the paths every peer uses to reach a prefix, merged into one picture.
 // Peers sit on one side, the origin AS on the other; an AS that several paths share is drawn once.
-// Each peer's path has its own colour (fixed per peer, from the manifest order); where paths share a hop
+// Each peer's path has its own colour (fixed per peer: manifest "colour", kept across builds); where paths share a hop
 // their lines run side by side. Pointing at (or tapping) a peer chip or box highlights that one path.
 import { asName } from "./asnames.js";
 

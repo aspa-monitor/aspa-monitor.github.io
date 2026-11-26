@@ -108,6 +108,17 @@ function prefixTable(groups, source, emptyText) {
 }
 
 
+// Most networks drop IPv4 routes longer than /24 and IPv6 longer than /48, so those rarely have any.
+const MAX_USUAL = { 4: 24, 6: 48 };
+function noMoreSpecifics(q, match) {
+  const len = match ? match.len : q.len;
+  const max = MAX_USUAL[q.afi];
+  return len >= max
+    ? `None. That is normal for a /${len}: most networks filter IPv${q.afi} routes longer than /${max}, so they ` +
+      "hardly ever reach RIS peers. Look up a shorter prefix (for example its /16) to see more-specifics."
+    : "None.";
+}
+
 function renderSource(res, q, src, multi) {
   const { match, exact, covering, moreSpecifics, unloaded, moreBase } = res;
   const asOf = new Date(src.as_of);
@@ -142,7 +153,7 @@ function renderSource(res, q, src, multi) {
     <h3>Covering prefixes (less specific)</h3>
     ${prefixTable(covering, src.name, "None.")}
     <h3>More-specific prefixes${match ? ` inside ${esc(match.prefix)}` : ""}</h3>
-    ${prefixTable(moreSpecifics, src.name, unloaded.blocks ? "None in the files loaded so far." : "None.")}
+    ${prefixTable(moreSpecifics, src.name, unloaded.blocks ? "None in the files loaded so far." : noMoreSpecifics(q, match))}
     ${unloadedHtml}
   </section>`;
 }
@@ -223,7 +234,7 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
       if (!r.path || seen.has(r.path)) continue;
       seen.add(r.path);
       entries.push({ label: sourceLabel(src), prefix: res.match.prefix, path: r.path,
-        slot: manifest.sources.indexOf(src) });
+        slot: Number.isInteger(src.colour) ? src.colour : manifest.sources.indexOf(src) });
     }
   }
   const slot = results.querySelector(".graph-slot");
