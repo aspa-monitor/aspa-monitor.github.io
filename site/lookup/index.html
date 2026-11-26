@@ -47,7 +47,8 @@
     </p>
     <p class="muted small">A prefix gets an exact match (or the longest covering prefix if there is none);
       an address gets the longest match. More-specific prefixes are listed for prefixes shorter than /24 (IPv4)
-      or /48 (IPv6), since longer routes are normally filtered. AS names come live from RIPEstat; if that fails, from
+      or /48 (IPv6), since longer routes are normally filtered; covering prefixes for anything longer than /8 (IPv4)
+      or /12 (IPv6), since there are no shorter routes. AS names come live from RIPEstat; if that fails, from
       RIPE NCC's AS names list (shown in <i>italics</i>).</p>
     <div id="results" aria-live="polite"></div>
   </main>

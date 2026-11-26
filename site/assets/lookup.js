@@ -112,6 +112,10 @@ function prefixTable(groups, source, emptyText) {
 // most networks filter routes longer than that, so there is almost never anything to show.
 const MAX_USUAL = { 4: 24, 6: 48 };
 export const wantMoreSpecifics = (q) => !q.isAddress && q.len < MAX_USUAL[q.afi];
+// No covering section at /8 (IPv4) or /12 (IPv6) and shorter: RIS peers carry no routes shorter than that
+// (checked on the data: the shortest are /8 for IPv4 and /16 for IPv6).
+const MIN_USUAL = { 4: 8, 6: 12 };
+export const wantCovering = (q, match) => (match ? match.len : q.len) > MIN_USUAL[q.afi];
 
 function renderSource(res, q, src, multi) {
   const { match, exact, covering, moreSpecifics, unloaded, moreBase } = res;
@@ -144,8 +148,8 @@ function renderSource(res, q, src, multi) {
     ${multi ? `<h2>${esc(sourceLabel(src))} <span class="muted small">${esc(collectorLabel(src))} · data as of ${esc(formatIST(asOf))}</span></h2>` : ""}
     ${head}
     ${matchHtml}
-    <h3>Covering prefixes (less specific)</h3>
-    ${prefixTable(covering, src.name, "None.")}
+    ${wantCovering(q, match) ? `<h3>Covering prefixes (less specific)</h3>
+    ${prefixTable(covering, src.name, "None.")}` : ""}
     ${moreSpecifics ? `<h3>More-specific prefixes${match ? ` inside ${esc(match.prefix)}` : ""}</h3>
     ${prefixTable(moreSpecifics, src.name, unloaded.blocks ? "None in the files loaded so far." : "None.")}
     ${unloadedHtml}` : ""}
