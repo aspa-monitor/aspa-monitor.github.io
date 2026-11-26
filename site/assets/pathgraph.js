@@ -58,25 +58,43 @@ export function layout(entries) {
   const all = [...nodes.values()];
   const top = Math.max(0, ...all.filter((n) => !n.peer).map((n) => n.layer)) + 1;
   for (const n of all) if (n.peer) n.layer = top;
+  // A line that skips layers gets an invisible waypoint ("dummy") in every layer it crosses, so it is
+  // routed through a gap between boxes instead of being drawn behind the boxes in between.
+  const edgeList = [...edges.values()];
+  for (const e of edgeList) {
+    const a = nodes.get(e.from), b = nodes.get(e.to);
+    e.chain = [e.from];
+    for (let L = a.layer - 1; L > b.layer; L--) {
+      const id = `~${e.from}>${e.to}@${L}`;
+      nodes.set(id, { id, layer: L, order: 0, dummy: true, first: nodes.size });
+      e.chain.push(id);
+    }
+    e.chain.push(e.to);
+  }
   const layers = [];
   for (const n of nodes.values()) (layers[n.layer] ||= []).push(n);
   for (let i = 0; i < layers.length; i++) layers[i] ||= [];
   layers.forEach((l) => l.sort((a, b) => a.first - b.first).forEach((n, k) => { n.order = k; }));
-  // A few sweeps placing each AS near the average position of its neighbours (fewer crossings).
-  const nbrs = new Map([...nodes.keys()].map((id) => [id, []]));
-  for (const e of edges.values()) { nbrs.get(e.from).push(e.to); nbrs.get(e.to).push(e.from); }
-  for (let sweep = 0; sweep < 4; sweep++) {
-    const order = sweep % 2 ? [...layers.keys()] : [...layers.keys()].reverse();
+  // Sweeps placing each box near the average position of its neighbours in the next layer (fewer crossings).
+  const up = new Map([...nodes.keys()].map((id) => [id, []]));   // neighbours one layer nearer the peers
+  const down = new Map([...nodes.keys()].map((id) => [id, []])); // neighbours one layer nearer the origin
+  for (const e of edgeList) {
+    for (let k = 1; k < e.chain.length; k++) { down.get(e.chain[k - 1]).push(e.chain[k]); up.get(e.chain[k]).push(e.chain[k - 1]); }
+  }
+  const pos = (n) => n.order / Math.max(1, layers[n.layer].length - 1);
+  for (let sweep = 0; sweep < 12; sweep++) {
+    const fromPeers = sweep % 2 === 0;
+    const order = fromPeers ? [...layers.keys()].reverse() : [...layers.keys()];
     for (const li of order) {
       const l = layers[li];
       for (const n of l) {
-        const ns = nbrs.get(n.id).map((id) => nodes.get(id)).filter((m) => m.layer !== n.layer);
-        n.bary = ns.length ? ns.reduce((s, m) => s + m.order, 0) / ns.length : n.order;
+        const ns = (fromPeers ? up : down).get(n.id).map((id) => nodes.get(id));
+        n.bary = ns.length ? ns.reduce((s, m) => s + pos(m), 0) / ns.length : pos(n);
       }
       l.sort((a, b) => a.bary - b.bary || a.first - b.first).forEach((n, k) => { n.order = k; });
     }
   }
-  return { nodes: [...nodes.values()], edges: [...edges.values()], layers };
+  return { nodes: [...nodes.values()], edges: edgeList, layers };
 }
 
 function el(name, attrs = {}, parent = null) {
@@ -95,9 +113,9 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
   entries = entries.filter((e) => hops(e.path).length);
   if (!entries.length) return null;
   const { nodes, edges, layers } = layout(entries);
-  const widest = Math.max(...layers.map((l) => l.length));
+  const widest = Math.max(...layers.map((l) => l.filter((n) => !n.dummy).length));
 
-  // Horizontal (peers left, origin right) when the boxes can be at least MIN_W wide; otherwise
+  // Horizontal (peers left, origin right) when the boxes can be at least 124 px wide; otherwise
   // top-to-bottom (phones), which is usually narrower. Box width stretches to use the space.
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const hW = Math.floor((width - 44 * (layers.length - 1)) / layers.length);
@@ -105,20 +123,29 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
   const maxLayer = layers.length - 1;
   const g = vertical
     ? { nodeW: clamp(Math.floor((width - 10 * (widest - 1)) / widest), 104, 160), nodeH: 44, gapMain: 40, gapCross: 10 }
-    : { nodeW: clamp(hW, 124, 200), nodeH: 44, gapMain: 44, gapCross: 14 };
-  const main = (layer) => (maxLayer - layer) * ((vertical ? g.nodeH : g.nodeW) + g.gapMain);
-  const crossSize = (vertical ? g.nodeW : g.nodeH) + g.gapCross;
-  const span = widest * crossSize - g.gapCross;
-  const pos = new Map();
-  for (const n of nodes) {
-    const count = layers[n.layer].length;
-    const offset = (span - (count * crossSize - g.gapCross)) / 2;
-    const cross = offset + n.order * crossSize;
-    pos.set(n.id, vertical ? { x: cross, y: main(n.layer) } : { x: main(n.layer), y: cross });
+    : { nodeW: clamp(hW, 124, 200), nodeH: 44, gapMain: 48, gapCross: 12 };
+  const DUMMY = 10; // room a passing line takes up in a layer
+  const boxMain = vertical ? g.nodeH : g.nodeW;
+  const boxCross = vertical ? g.nodeW : g.nodeH;
+  const size = (n) => (n.dummy ? DUMMY : boxCross);
+  const extent = (l) => l.reduce((s, n) => s + size(n), 0) + g.gapCross * Math.max(0, l.length - 1);
+  const span = Math.max(...layers.map(extent));
+  const main = (layer) => (maxLayer - layer) * (boxMain + g.gapMain);
+  const at = new Map(); // id -> {m: main start, c: cross start}
+  for (const l of layers) {
+    let c = (span - extent(l)) / 2;
+    for (const n of [...l].sort((a, b) => a.order - b.order)) {
+      at.set(n.id, { m: main(n.layer), c });
+      c += size(n) + g.gapCross;
+    }
   }
+  const xy = (m, c) => (vertical ? `${c.toFixed(1)},${m.toFixed(1)}` : `${m.toFixed(1)},${c.toFixed(1)}`);
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const mid = (id) => at.get(id).c + size(byId.get(id)) / 2;
   const pad = 6;
-  const W = (vertical ? span : layers.length * (g.nodeW + g.gapMain) - g.gapMain) + 2 * pad;
-  const Hh = (vertical ? layers.length * (g.nodeH + g.gapMain) - g.gapMain : span) + 2 * pad;
+  const mainLen = layers.length * (boxMain + g.gapMain) - g.gapMain;
+  const W = (vertical ? span : mainLen) + 2 * pad;
+  const Hh = (vertical ? mainLen : span) + 2 * pad;
 
   const svg = el("svg", { viewBox: `${-pad} ${-pad} ${W} ${Hh}`, width: W, height: Hh, class: "pathgraph", role: "img",
     "aria-label": `AS path graph of ${entries.length} peer path(s)` });
@@ -128,14 +155,15 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
   const asnOf = new Map(nodes.map((n) => [n.id, n.asn]));
   const maxUsers = Math.max(...edges.map((e) => e.users.length));
   for (const e of edges) {
-    const a = pos.get(e.from), b = pos.get(e.to);
-    let d;
-    if (vertical) {
-      const x1 = a.x + g.nodeW / 2, y1 = a.y + g.nodeH, x2 = b.x + g.nodeW / 2, y2 = b.y, m = (y1 + y2) / 2;
-      d = `M${x1},${y1} C${x1},${m} ${x2},${m} ${x2},${y2}`;
-    } else {
-      const x1 = a.x + g.nodeW, y1 = a.y + g.nodeH / 2, x2 = b.x, y2 = b.y + g.nodeH / 2, m = (x1 + x2) / 2;
-      d = `M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}`;
+    // Leave each box from its origin-side edge, pass straight through waypoints, enter the next box.
+    const ids = e.chain;
+    let m0 = at.get(ids[0]).m + boxMain, c0 = mid(ids[0]);
+    let d = `M${xy(m0, c0)}`;
+    for (let k = 1; k < ids.length; k++) {
+      const m1 = at.get(ids[k]).m, c1 = mid(ids[k]), h = (m1 - m0) / 2;
+      d += ` C${xy(m0 + h, c0)} ${xy(m1 - h, c1)} ${xy(m1, c1)}`;
+      m0 = m1 + boxMain; c0 = c1;
+      if (k < ids.length - 1) d += ` L${xy(m0, c0)}`;
     }
     const w = 1.5 + 3.5 * (e.users.length - 1) / Math.max(1, maxUsers - 1);
     const p = el("path", { d, class: "edge", "stroke-width": w.toFixed(1), "data-users": e.users.join(" ") }, edgeLayer);
@@ -144,7 +172,9 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
 
   const nameMax = Math.floor((g.nodeW - 18) / 5.9);
   for (const n of nodes) {
-    const { x, y } = pos.get(n.id);
+    if (n.dummy) continue;
+    const { m, c } = at.get(n.id);
+    const [x, y] = vertical ? [c, m] : [m, c];
     const asn = n.asn;
     const isSet = asn.startsWith("{");
     const users = entries.map((e, i) => {
@@ -209,6 +239,14 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
     b.addEventListener("mouseenter", () => pinned == null && highlight(i));
     b.addEventListener("mouseleave", () => pinned == null && highlight(null));
     b.addEventListener("click", () => { pinned = pinned === i ? null : i; highlight(pinned); });
+  }
+  // Pointing at a peer's own box in the graph highlights its path too.
+  for (const node of svg.querySelectorAll(".node.peer, .node.origin")) {
+    const users = node.dataset.users.split(" ");
+    if (!node.classList.contains("peer") || users.length !== 1) continue;
+    const i = Number(users[0]);
+    node.addEventListener("mouseenter", () => pinned == null && highlight(i));
+    node.addEventListener("mouseleave", () => pinned == null && highlight(null));
   }
   return fig;
 }
