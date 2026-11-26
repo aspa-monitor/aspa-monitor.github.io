@@ -39,7 +39,7 @@ and deploys GitHub Pages from Actions. **Nothing is committed**: the data only e
 manifest.json                 sources, upstream generated_at / as_of, build time (IST)
 <source>/index.json           blocks per family: {"<id>": {"n": routes in file, "t": routes in subtree, "k": split bits}}
 <source>/meta.json            ris-routing-data meta for the source
-<source>/v4/<id>.json         one address block; v6/ likewise
+<source>/v4/<id>.json.gz      one address block, gzip-compressed JSON (the page decompresses it); v6/ likewise
 ../asnames/<asn % 100>.json   backup AS names {"<asn>": "<name>"}, rebuilt every deploy (step skipped if asn.txt fails)
 ```
 Blocks: `root` holds IPv4 prefixes shorter than /8 (IPv6: /16). Then one block per IPv4 first octet / IPv6 first

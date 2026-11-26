@@ -91,15 +91,16 @@ class ShardSourceTest(unittest.TestCase):
             self.assertEqual(index["peers"], ["12.0.1.63", "2001:1890:111d:1::63"])
             self.assertEqual(index["nodes"]["v4"]["01"], {"n": 2, "t": 2})
             self.assertNotIn("root", index["nodes"]["v4"])
+            self.assertEqual(index["block_suffix"], ".json.gz")
 
-            block = json.loads((out / "t_src" / "v4" / "01.json").read_text())
+            block = json.loads(gzip.decompress((out / "t_src" / "v4" / "01.json.gz").read_bytes()))
             self.assertEqual(len(block["paths"]), 2)
             r0, r1 = block["routes"]
             self.assertEqual(r0, ["1.0.0.0/24", 0, 0, 13335, "7018:2500 7018:37171", None, 13335, "10.34.2.204", 1, 1795507729])
             self.assertEqual(r1[5], 7018)  # otc
             self.assertEqual(block["paths"][r1[2]], ["7018 1299 {23969,65000}", "7018 1299 {65000,23969}", 3, None,
                                                     "as_set,private", "23969 65000"])
-            v6 = json.loads((out / "t_src" / "v6" / "2001.json").read_text())
+            v6 = json.loads(gzip.decompress((out / "t_src" / "v6" / "2001.json.gz").read_bytes()))
             self.assertEqual(v6["routes"][0][1], 1)
 
 

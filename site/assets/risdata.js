@@ -22,6 +22,23 @@ export function getJSON(url) {
   return cache.get(url);
 }
 
+/** Fetch a gzip-compressed JSON file. Pages sends it as plain bytes; if a server already
+ * decoded it (Content-Encoding: gzip), the bytes are JSON and are used as they are. */
+export function getGzJSON(url) {
+  if (!cache.has(url)) {
+    const p = fetch(url).then(async (r) => {
+      if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+      const buf = new Uint8Array(await r.arrayBuffer());
+      if (buf[0] !== 0x1f || buf[1] !== 0x8b) return JSON.parse(new TextDecoder().decode(buf));
+      const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"));
+      return JSON.parse(await new Response(stream).text());
+    });
+    p.catch(() => cache.delete(url));
+    cache.set(url, p);
+  }
+  return cache.get(url);
+}
+
 export const loadManifest = () => getJSON(`${DATA_ROOT}manifest.json`);
 export const loadIndex = (source) => getJSON(`${DATA_ROOT}${source}/index.json`);
 
@@ -65,7 +82,9 @@ export function blocksInside(index, afi, net, len) {
 
 /** Fetch one block file and expand it into route objects. */
 export async function loadBlock(source, afi, id, index) {
-  const file = await getJSON(`${DATA_ROOT}${source}/${FAM[afi]}/${id}.json`);
+  const suffix = index.block_suffix || ".json";
+  const url = `${DATA_ROOT}${source}/${FAM[afi]}/${id}${suffix}`;
+  const file = await (suffix.endsWith(".gz") ? getGzJSON(url) : getJSON(url));
   if (!file._expanded) {
     file._expanded = file.routes.map((r) => {
       const p = parsePrefix(r[0]);

@@ -2,8 +2,12 @@
 
 Layout per source (data/ris/<source>/):
   index.json           which blocks exist, how many routes each holds, which were split
-  v4/root.json         IPv4 prefixes shorter than /8      (v6/root.json: shorter than /16)
-  v4/<id>.json         one block, named by node_id() (IPv4 103/8 -> 67, 103.0/11 -> 670-11)
+  v4/root.json.gz      IPv4 prefixes shorter than /8      (v6/root.json.gz: shorter than /16)
+  v4/<id>.json.gz      one block, named by node_id() (IPv4 103/8 -> 67, 103.0/11 -> 670-11)
+
+Block files are gzip-compressed JSON (about 6x smaller), so many peers fit in the 1 GB Pages limit.
+Pages serves them as plain bytes; the browser decompresses them (DecompressionStream).
+index.json "block_suffix" names the file ending, so the page never has to guess.
 
 A block with more than SPLIT_THRESHOLD routes is split by the next k bits (k = "k" in index.json,
 the fewest bits that should bring each child under the threshold): it keeps the prefixes shorter than
@@ -124,9 +128,14 @@ def plan_blocks(routes, width: int, base: int):
     return blocks
 
 
-def _write_json(path: Path, obj) -> int:
+BLOCK_SUFFIX = ".json.gz"
+
+
+def _write_json(path: Path, obj, compress: bool = False) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
     data = json.dumps(obj, separators=(",", ":"), ensure_ascii=False).encode()
+    if compress:
+        data = gzip.compress(data, compresslevel=9, mtime=0)
     path.write_bytes(data)
     return len(data)
 
@@ -181,8 +190,8 @@ def shard_source(source: dict, work: Path, out: Path) -> dict:
                     1 if row["atomic"] == "1" else 0,
                     _int_or_none(row["timestamp"]),
                 ])
-            total_bytes += _write_json(dest / fam["key"] / f"{nid}.json",
-                                       {"paths": path_rows, "routes": route_rows})
+            total_bytes += _write_json(dest / fam["key"] / f"{nid}{BLOCK_SUFFIX}",
+                                       {"paths": path_rows, "routes": route_rows}, compress=True)
             files += 1
         if not nodes["root"]["n"]:
             nodes.pop("root")
@@ -196,6 +205,7 @@ def shard_source(source: dict, work: Path, out: Path) -> dict:
         "as_of": source["as_of"],
         "peers": peers,
         "split_threshold": SPLIT_THRESHOLD,
+        "block_suffix": BLOCK_SUFFIX,
         "counts": {"routes": counts["v4"] + counts["v6"], **counts, "paths": len(paths)},
         "nodes": index_nodes,
     }
