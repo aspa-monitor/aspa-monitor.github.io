@@ -217,7 +217,8 @@ async function run(text, sourceName, { loadAllFor = null } = {}) {
     for (const r of res.match.routes) {
       if (!r.path || seen.has(r.path)) continue;
       seen.add(r.path);
-      entries.push({ label: sourceLabel(src), prefix: res.match.prefix, path: r.path });
+      entries.push({ label: sourceLabel(src), prefix: res.match.prefix, path: r.path,
+        slot: manifest.sources.indexOf(src) });
     }
   }
   const slot = results.querySelector(".graph-slot");

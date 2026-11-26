@@ -1,9 +1,12 @@
 // AS path graph: the paths every peer uses to reach a prefix, merged into one picture.
 // Peers sit on one side, the origin AS on the other; an AS that several paths share is drawn once.
-// Lines get thicker the more peers use them. Pointing at (or tapping) a peer chip highlights its path.
+// Each peer's path has its own colour (fixed per peer, from the manifest order); where paths share a hop
+// their lines run side by side. Pointing at (or tapping) a peer chip or box highlights that one path.
 import { asName } from "./asnames.js";
 
 const SVG = "http://www.w3.org/2000/svg";
+const COLOURS = 8; // style.css --peer-1 .. --peer-8; more peers than that share a neutral colour
+export const peerColour = (slot) => (slot != null && slot < COLOURS ? `var(--peer-${slot + 1})` : "var(--muted)");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 /** Path text -> list of hops; consecutive repeats (prepending) collapse into one hop. */
@@ -124,7 +127,7 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
   const g = vertical
     ? { nodeW: clamp(Math.floor((width - 10 * (widest - 1)) / widest), 104, 160), nodeH: 44, gapMain: 40, gapCross: 10 }
     : { nodeW: clamp(hW, 124, 200), nodeH: 44, gapMain: 48, gapCross: 12 };
-  const DUMMY = 10; // room a passing line takes up in a layer
+  const DUMMY = 4 + 3.4 * Math.max(...edges.map((e) => e.users.length)); // room passing lines take up
   const boxMain = vertical ? g.nodeH : g.nodeW;
   const boxCross = vertical ? g.nodeW : g.nodeH;
   const size = (n) => (n.dummy ? DUMMY : boxCross);
@@ -148,26 +151,30 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
   const Hh = (vertical ? mainLen : span) + 2 * pad;
 
   const svg = el("svg", { viewBox: `${-pad} ${-pad} ${W} ${Hh}`, width: W, height: Hh, class: "pathgraph", role: "img",
+    style: `--natural-w:${W}px`,
     "aria-label": `AS path graph of ${entries.length} peer path(s)` });
   const edgeLayer = el("g", { class: "edges" }, svg);
   const nodeLayer = el("g", { class: "nodes" }, svg);
 
   const asnOf = new Map(nodes.map((n) => [n.id, n.asn]));
-  const maxUsers = Math.max(...edges.map((e) => e.users.length));
+  const LANE = 3.4; // distance between side-by-side lines
   for (const e of edges) {
-    // Leave each box from its origin-side edge, pass straight through waypoints, enter the next box.
-    const ids = e.chain;
-    let m0 = at.get(ids[0]).m + boxMain, c0 = mid(ids[0]);
-    let d = `M${xy(m0, c0)}`;
-    for (let k = 1; k < ids.length; k++) {
-      const m1 = at.get(ids[k]).m, c1 = mid(ids[k]), h = (m1 - m0) / 2;
-      d += ` C${xy(m0 + h, c0)} ${xy(m1 - h, c1)} ${xy(m1, c1)}`;
-      m0 = m1 + boxMain; c0 = c1;
-      if (k < ids.length - 1) d += ` L${xy(m0, c0)}`;
-    }
-    const w = 1.5 + 3.5 * (e.users.length - 1) / Math.max(1, maxUsers - 1);
-    const p = el("path", { d, class: "edge", "stroke-width": w.toFixed(1), "data-users": e.users.join(" ") }, edgeLayer);
-    el("title", {}, p).textContent = `AS${asnOf.get(e.from)} → AS${asnOf.get(e.to)}: ${e.users.map((i) => entries[i].label).join(", ")}`;
+    const users = [...e.users].sort((a, b) => (entries[a].slot ?? a) - (entries[b].slot ?? b));
+    users.forEach((u, k) => {
+      const off = (k - (users.length - 1) / 2) * LANE;
+      // Leave each box from its origin-side edge, pass straight through waypoints, enter the next box.
+      const ids = e.chain;
+      let m0 = at.get(ids[0]).m + boxMain, c0 = mid(ids[0]) + off;
+      let d = `M${xy(m0, c0)}`;
+      for (let s = 1; s < ids.length; s++) {
+        const m1 = at.get(ids[s]).m, c1 = mid(ids[s]) + off, h = (m1 - m0) / 2;
+        d += ` C${xy(m0 + h, c0)} ${xy(m1 - h, c1)} ${xy(m1, c1)}`;
+        m0 = m1 + boxMain; c0 = c1;
+        if (s < ids.length - 1) d += ` L${xy(m0, c0)}`;
+      }
+      const p = el("path", { d, class: "edge", style: `stroke:${peerColour(entries[u].slot)}`, "data-users": String(u) }, edgeLayer);
+      el("title", {}, p).textContent = `${entries[u].label}: AS${asnOf.get(e.from)} → AS${asnOf.get(e.to)}`;
+    });
   }
 
   const nameMax = Math.floor((g.nodeW - 18) / 5.9);
@@ -185,9 +192,12 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
     const a = el("a", isSet ? {} : { href: `https://bgp.tools/as/${asn}`, target: "_blank", rel: "noopener" }, nodeLayer);
     const grp = el("g", { class: `node ${kind}`, transform: `translate(${x},${y})`, "data-users": users.join(" ") }, a);
     el("rect", { width: g.nodeW, height: g.nodeH, rx: 10 }, grp);
+    if (n.peer && users.length === 1) {
+      el("rect", { x: 4, y: 8, width: 4, height: g.nodeH - 16, rx: 2, class: "stripe", style: `fill:${peerColour(entries[users[0]].slot)}` }, grp);
+    }
     const label = isSet ? fit(`{${asn.slice(1, -1).split(",").map((s) => `AS${s}`).join(", ")}}`, nameMax + 2) : `AS${asn}`;
-    el("text", { x: 10, y: 18, class: "num" }, grp).textContent = label;
-    const nameEl = el("text", { x: 10, y: 34, class: "name" }, grp);
+    el("text", { x: n.peer ? 14 : 10, y: 18, class: "num" }, grp).textContent = label;
+    const nameEl = el("text", { x: n.peer ? 14 : 10, y: 34, class: "name" }, grp);
     const tip = el("title", {}, grp);
     const role = n.origin ? "origin AS" : n.peer ? "peer AS" : "transit AS";
     tip.textContent = `${label} (${role}); used by ${users.map((i) => entries[i].label).join(", ")}`;
@@ -208,14 +218,15 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
   fig.innerHTML = `<figcaption>
       <strong>AS path graph</strong>
       <span class="muted small">${entries.length} peer path(s) to ${prefixes.map(esc).join(", ")}.
-        Thicker lines are used by more peers. Point at or tap a peer below to highlight its path.</span>
+        Each peer's path has its own colour; lines run side by side where paths share an AS.
+        Point at or tap a peer to highlight its path.</span>
     </figcaption>
     <p class="graph-hint small muted" hidden>Swipe sideways to see the whole graph.</p>
     <div class="graph-scroll"></div>
     <div class="graph-peers">${entries.map((e, i) =>
-      `<button type="button" class="peer-chip" data-i="${i}">${esc(e.label)}${prefixes.length > 1 ? ` <span class="muted">(${esc(e.prefix)})</span>` : ""}</button>`).join("")}</div>
+      `<button type="button" class="peer-chip" data-i="${i}"><i class="swatch" style="background:${peerColour(e.slot)}"></i>${esc(e.label)}${prefixes.length > 1 ? ` <span class="muted">(${esc(e.prefix)})</span>` : ""}</button>`).join("")}</div>
     <div class="graph-legend small muted">
-      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin</span>
+      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span>
     </div>`;
   fig.querySelector(".graph-scroll").appendChild(svg);
 

@@ -239,21 +239,26 @@ h1.hero {
 .graph-card figcaption { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
 .graph-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
 .pathgraph { display: block; max-width: none; font-family: var(--sans); }
-.pathgraph .edge { fill: none; stroke: color-mix(in srgb, var(--muted) 55%, transparent); stroke-linecap: round; transition: stroke 0.15s, opacity 0.15s; }
+/* Laptop and desktop: shrink the graph to the card if needed, never scroll. Phones scroll sideways. */
+@media (min-width: 700px) {
+  .pathgraph { width: 100%; height: auto; max-width: var(--natural-w); margin: 0 auto; }
+}
+.pathgraph .edge { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; transition: opacity 0.15s; }
 .pathgraph .node rect { fill: var(--chip); stroke: var(--chip-line); stroke-width: 1.2; transition: opacity 0.15s; }
 .pathgraph .node.peer rect { fill: var(--card); stroke: var(--accent-2); stroke-width: 1.8; }
 .pathgraph .node.origin rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
 .pathgraph .num { font-family: var(--mono); font-size: 12.5px; font-weight: 700; fill: var(--accent); }
 .pathgraph .name { font-size: 10.5px; fill: var(--muted); }
 .pathgraph a:hover rect { stroke: var(--accent); }
-.pathgraph.focus .edge:not(.on) { opacity: 0.15; }
+.pathgraph.focus .edge:not(.on) { opacity: 0.1; }
 .pathgraph.focus .node:not(.on) { opacity: 0.3; }
-.pathgraph.focus .edge.on { stroke: var(--accent); }
+.pathgraph.focus .edge.on { opacity: 1; stroke-width: 3.2; }
 .graph-peers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .peer-chip {
   font: inherit; font-size: 0.82em; cursor: pointer; color: var(--fg);
   background: var(--chip); border: 1px solid var(--chip-line); border-radius: 999px; padding: 3px 10px;
 }
+.peer-chip .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 .peer-chip:hover, .peer-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .graph-legend { display: flex; gap: 14px; margin-top: 10px; }
 .graph-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1.5px solid; }
@@ -261,3 +266,13 @@ h1.hero {
 .graph-legend .dot.transit { border-color: var(--chip-line); background: var(--chip); }
 .graph-legend .dot.origin { border-color: var(--accent); background: var(--accent-soft); }
 .graph-hint { margin: 0 0 6px; }
+
+/* Peer path colours (categorical, fixed order; light and dark steps of the same eight hues). */
+:root, [data-theme="daylight"], [data-theme="sand"] {
+  --peer-1: #2a78d6; --peer-2: #eb6834; --peer-3: #1baf7a; --peer-4: #eda100;
+  --peer-5: #e87ba4; --peer-6: #008300; --peer-7: #6250d6; --peer-8: #e34948;
+}
+[data-theme="midnight"], [data-theme="ocean"] {
+  --peer-1: #3987e5; --peer-2: #d95926; --peer-3: #199e70; --peer-4: #c98500;
+  --peer-5: #d55181; --peer-6: #0ca30c; --peer-7: #9085e9; --peer-8: #e66767;
+}
