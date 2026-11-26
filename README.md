@@ -79,5 +79,3 @@ No dependencies beyond the Python 3.12+ standard library (and Node 22 for the JS
 - The domain is hard-coded in: `site/*.html` (`canonical`, `og:url`, JSON-LD `url`), `site/robots.txt`,
   `site/sitemap.xml`, `LIVE_MANIFEST_URL` in `.github/workflows/pages.yml` and `USER_AGENT` in `pipeline/ris/fetch.py`.
   Pages and data use root-relative links (`/lookup/`, `/data/...`), so nothing else changes with the domain.
-
-See [TODO.md](TODO.md) for planned work.
