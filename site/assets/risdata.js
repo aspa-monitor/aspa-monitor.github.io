@@ -141,7 +141,7 @@ export function groupByPrefix(routes) {
  *   match: the matched prefix group (exact, or longest covering) or null
  *   unloaded: blocks with more-specifics not fetched yet {blocks, routes}
  */
-export async function lookup(source, q, { loadAll = false } = {}) {
+export async function lookup(source, q, { loadAll = false, withMoreSpecifics = true } = {}) {
   const index = await loadIndex(source);
   const ch = chain(index, q.afi, q.net, q.len);
   const loaded = new Set();
@@ -162,7 +162,8 @@ export async function lookup(source, q, { loadAll = false } = {}) {
 
   // More-specifics of the matched prefix (or of the query, when nothing covers it).
   const base = match || q;
-  const inside = blocksInside(index, q.afi, base.net, base.len).filter((b) => b.node.n > 0 && !loaded.has(b.id));
+  const inside = withMoreSpecifics
+    ? blocksInside(index, q.afi, base.net, base.len).filter((b) => b.node.n > 0 && !loaded.has(b.id)) : [];
   let unloaded = { blocks: inside.length, routes: inside.reduce((s, b) => s + b.node.n, 0) };
   const toLoad = loadAll && inside.length <= MAX_LOAD_FILES ? inside : inside.length <= AUTO_LOAD_FILES ? inside : [];
   if (toLoad.length) {
@@ -173,8 +174,8 @@ export async function lookup(source, q, { loadAll = false } = {}) {
     const rest = inside.filter((b) => !loaded.has(b.id));
     unloaded = { blocks: rest.length, routes: rest.reduce((s, b) => s + b.node.n, 0) };
   }
-  const moreSpecifics = groupByPrefix(
+  const moreSpecifics = withMoreSpecifics ? groupByPrefix(
     routes.filter((r) => r.len > base.len && covers(q.afi, base.net, base.len, r.net, r.len)),
-  );
+  ) : null;
   return { source, index, exact, match, covering, moreSpecifics, moreBase: base, unloaded, loadedAll: loadAll };
 }

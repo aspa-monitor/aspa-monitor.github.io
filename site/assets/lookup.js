@@ -108,16 +108,10 @@ function prefixTable(groups, source, emptyText) {
 }
 
 
-// Most networks drop IPv4 routes longer than /24 and IPv6 longer than /48, so those rarely have any.
+// No more-specifics section for a single address, or for a /24 (IPv4) or /48 (IPv6) and longer:
+// most networks filter routes longer than that, so there is almost never anything to show.
 const MAX_USUAL = { 4: 24, 6: 48 };
-function noMoreSpecifics(q, match) {
-  const len = match ? match.len : q.len;
-  const max = MAX_USUAL[q.afi];
-  return len >= max
-    ? `None. That is normal for a /${len}: most networks filter IPv${q.afi} routes longer than /${max}, so they ` +
-      "hardly ever reach RIS peers. Look up a shorter prefix (for example its /16) to see more-specifics."
-    : "None.";
-}
+export const wantMoreSpecifics = (q) => !q.isAddress && q.len < MAX_USUAL[q.afi];
 
 function renderSource(res, q, src, multi) {
   const { match, exact, covering, moreSpecifics, unloaded, moreBase } = res;
@@ -152,9 +146,9 @@ function renderSource(res, q, src, multi) {
     ${matchHtml}
     <h3>Covering prefixes (less specific)</h3>
     ${prefixTable(covering, src.name, "None.")}
-    <h3>More-specific prefixes${match ? ` inside ${esc(match.prefix)}` : ""}</h3>
-    ${prefixTable(moreSpecifics, src.name, unloaded.blocks ? "None in the files loaded so far." : noMoreSpecifics(q, match))}
-    ${unloadedHtml}
+    ${moreSpecifics ? `<h3>More-specific prefixes${match ? ` inside ${esc(match.prefix)}` : ""}</h3>
+    ${prefixTable(moreSpecifics, src.name, unloaded.blocks ? "None in the files loaded so far." : "None.")}
+    ${unloadedHtml}` : ""}
   </section>`;
 }
 
@@ -215,7 +209,8 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
   const multi = sources.length > 1;
   const done = await Promise.all(sources.map(async (src) => {
     try {
-      const res = await lookup(src.name, q, { loadAll: loadAllFor === src.name || loadAllFor === "all" });
+      const res = await lookup(src.name, q, {
+        loadAll: loadAllFor === src.name || loadAllFor === "all", withMoreSpecifics: wantMoreSpecifics(q) });
       return { src, res, html: renderSource(res, q, src, multi) };
     } catch (e) {
       return { src, html: `<section class="source-result">${multi ? `<h2>${esc(sourceLabel(src))}</h2>` : ""}<p class="error">Could not load data: ${esc(e.message)}</p></section>` };
