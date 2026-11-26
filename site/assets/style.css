@@ -194,6 +194,24 @@ table.list tbody tr:hover td { background: var(--card-2); }
 table.list th { color: var(--muted); font-weight: 650; font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.04em; background: var(--card-2); }
 table.list td:first-child { font-family: var(--mono); }
 table.list .asn { flex-direction: row; gap: 6px; align-items: baseline; padding: 2px 8px; }
+table.list .asn { flex-wrap: wrap; column-gap: 6px; row-gap: 0; }
+table.list .asname { overflow-wrap: break-word; min-width: 0; }
+table.list td.when { white-space: nowrap; }
+/* Phones: each prefix row becomes a small card of label / value lines. */
+@media (max-width: 640px) {
+  table.list.stack thead { display: none; }
+  table.list.stack, table.list.stack tbody, table.list.stack tr, table.list.stack td { display: block; width: auto; }
+  table.list.stack tr { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  table.list.stack tbody tr:last-child { border-bottom: 0; }
+  table.list.stack td { display: flex; gap: 12px; align-items: baseline; padding: 3px 0; border: 0; text-align: left; }
+  table.list.stack td::before {
+    content: attr(data-label); flex: 0 0 92px; color: var(--muted);
+    font-family: var(--sans); font-size: 0.74em; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  table.list.stack td:first-child { font-size: 1.05em; }
+  table.list.stack td[data-label="Flags"]:empty { display: none; }
+  table.list.stack td.when { white-space: normal; }
+}
 .num { text-align: right; }
 
 /* Home */

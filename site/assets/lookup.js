@@ -96,13 +96,13 @@ function prefixTable(groups, source, emptyText) {
   const shown = groups.slice(0, MAX_LIST_ROWS);
   const body = shown.map((g) => {
     const r = g.routes[0];
-    return `<tr><td>${lookupLink(g.prefix, source)}</td><td>${asChip(r.origin)}</td>` +
-      `<td class="num">${esc(r.length ?? "—")}</td><td>${esc(formatUnixIST(r.timestamp))}</td>` +
-      `<td>${splitList(r.flags).map((f) => `<span class="flag small">${esc((FLAG_INFO[f] || { label: f }).label)}</span>`).join(" ")}</td></tr>`;
+    return `<tr><td data-label="Prefix">${lookupLink(g.prefix, source)}</td><td data-label="Origin">${asChip(r.origin)}</td>` +
+      `<td class="num" data-label="Length">${esc(r.length ?? "—")}</td><td class="when" data-label="Last change">${esc(formatUnixIST(r.timestamp))}</td>` +
+      `<td data-label="Flags">${splitList(r.flags).map((f) => `<span class="flag small">${esc((FLAG_INFO[f] || { label: f }).label)}</span>`).join(" ")}</td></tr>`;
   }).join("");
   const more = groups.length > shown.length
     ? `<p class="muted">Showing ${shown.length} of ${groups.length}. Look up a longer prefix to narrow the list.</p>` : "";
-  return `<table class="list"><thead><tr><th>Prefix</th><th>Origin</th><th>Length</th><th>Last change</th><th>Flags</th></tr></thead>` +
+  return `<table class="list stack"><thead><tr><th>Prefix</th><th>Origin</th><th>Length</th><th>Last change</th><th>Flags</th></tr></thead>` +
     `<tbody>${body}</tbody></table>${more}`;
 }
 
