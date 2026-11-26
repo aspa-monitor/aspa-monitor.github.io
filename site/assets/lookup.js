@@ -155,7 +155,7 @@ function setBanner() {
   const asOf = new Date(manifest.upstream.as_of);
   const hours = (Date.now() - asOf) / 3600e3;
   banner.className = hours > STALE_HOURS ? "banner stale" : "banner";
-  banner.innerHTML = `RIS data as of <strong>${esc(formatIST(asOf))}</strong> (${esc(ago(asOf))})` +
+  banner.innerHTML = `Routing data as of <strong>${esc(formatIST(asOf))}</strong> (${esc(ago(asOf))})` +
     (hours > STALE_HOURS ? ". The hourly update seems to be late." : ".");
 }
 
