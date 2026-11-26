@@ -17,10 +17,12 @@ export function hops(path) {
 
 /**
  * Layout without coordinates. entries: [{label, prefix, path}].
- * Returns {nodes: [{id, layer, order, peer, origin}], edges: [{from, to, users: [entry index]}], layers}
- * layer 0 = origin side; peers get the highest layers.
+ * Returns {nodes: [{id, asn, layer, order, peer, origin}], edges: [{from, to, users: [entry index]}], layers}
+ * layer 0 = origin side; every peer sits in the outermost layer. A peer's own box is separate from the
+ * box for the same AS as a transit hop on other peers' paths (e.g. AS4777 -> AS2497, where AS2497 is
+ * also a peer), so the peers always line up and lines never run backwards.
  */
-export function layout(entries, { alignPeers = true } = {}) {
+export function layout(entries) {
   const paths = entries.map((e) => hops(e.path));
   const nodes = new Map();
   const edges = new Map();
@@ -29,14 +31,16 @@ export function layout(entries, { alignPeers = true } = {}) {
     return nodes.get(id);
   };
   paths.forEach((p, i) => {
-    p.forEach((id, j) => {
+    const ids = p.map((asn, j) => (j === 0 ? `peer:${asn}` : asn));
+    ids.forEach((id, j) => {
       const n = node(id);
+      n.asn = p[j];
       n.layer = Math.max(n.layer, p.length - 1 - j);
       if (j === 0) n.peer = true;
       if (j === p.length - 1) n.origin = true;
       if (j > 0) {
-        const key = `${p[j - 1]} ${id}`;
-        if (!edges.has(key)) edges.set(key, { from: p[j - 1], to: id, users: [] });
+        const key = `${ids[j - 1]} ${id}`;
+        if (!edges.has(key)) edges.set(key, { from: ids[j - 1], to: id, users: [] });
         if (!edges.get(key).users.includes(i)) edges.get(key).users.push(i);
       }
     });
@@ -50,10 +54,10 @@ export function layout(entries, { alignPeers = true } = {}) {
     }
     if (!moved) break;
   }
-  // Peers that are never a transit hop all go in the outermost column, so the peers line up.
-  const transit = new Set(paths.flatMap((p) => p.slice(1)));
-  const top = Math.max(...[...nodes.values()].map((n) => n.layer));
-  if (alignPeers) for (const n of nodes.values()) if (n.peer && !transit.has(n.id)) n.layer = top;
+  // All peers in the outermost layer, one step beyond the furthest transit hop.
+  const all = [...nodes.values()];
+  const top = Math.max(0, ...all.filter((n) => !n.peer).map((n) => n.layer)) + 1;
+  for (const n of all) if (n.peer) n.layer = top;
   const layers = [];
   for (const n of nodes.values()) (layers[n.layer] ||= []).push(n);
   for (let i = 0; i < layers.length; i++) layers[i] ||= [];
@@ -90,20 +94,14 @@ function fit(text, max) {
 export function renderPathGraph(entries, { width = 900 } = {}) {
   entries = entries.filter((e) => hops(e.path).length);
   if (!entries.length) return null;
-  let { nodes, edges, layers } = layout(entries);
-  let widest = Math.max(...layers.map((l) => l.length));
+  const { nodes, edges, layers } = layout(entries);
+  const widest = Math.max(...layers.map((l) => l.length));
 
   // Horizontal (peers left, origin right) when the boxes can be at least MIN_W wide; otherwise
   // top-to-bottom (phones), which is usually narrower. Box width stretches to use the space.
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const hW = Math.floor((width - 44 * (layers.length - 1)) / layers.length);
   const vertical = hW < 124;
-  if (vertical) {
-    // On a narrow screen, peers stay at their own distance from the origin: fewer boxes side by side.
-    const loose = layout(entries, { alignPeers: false });
-    const looseWidest = Math.max(...loose.layers.map((l) => l.length));
-    if (looseWidest < widest) ({ nodes, edges, layers } = loose), (widest = looseWidest);
-  }
   const maxLayer = layers.length - 1;
   const g = vertical
     ? { nodeW: clamp(Math.floor((width - 10 * (widest - 1)) / widest), 104, 160), nodeH: 44, gapMain: 40, gapCross: 10 }
@@ -127,6 +125,7 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
   const edgeLayer = el("g", { class: "edges" }, svg);
   const nodeLayer = el("g", { class: "nodes" }, svg);
 
+  const asnOf = new Map(nodes.map((n) => [n.id, n.asn]));
   const maxUsers = Math.max(...edges.map((e) => e.users.length));
   for (const e of edges) {
     const a = pos.get(e.from), b = pos.get(e.to);
@@ -140,19 +139,23 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
     }
     const w = 1.5 + 3.5 * (e.users.length - 1) / Math.max(1, maxUsers - 1);
     const p = el("path", { d, class: "edge", "stroke-width": w.toFixed(1), "data-users": e.users.join(" ") }, edgeLayer);
-    el("title", {}, p).textContent = `AS${e.from} → AS${e.to}: ${e.users.map((i) => entries[i].label).join(", ")}`;
+    el("title", {}, p).textContent = `AS${asnOf.get(e.from)} → AS${asnOf.get(e.to)}: ${e.users.map((i) => entries[i].label).join(", ")}`;
   }
 
   const nameMax = Math.floor((g.nodeW - 18) / 5.9);
   for (const n of nodes) {
     const { x, y } = pos.get(n.id);
-    const isSet = n.id.startsWith("{");
-    const users = entries.map((e, i) => (hops(e.path).includes(n.id) ? i : -1)).filter((i) => i >= 0);
+    const asn = n.asn;
+    const isSet = asn.startsWith("{");
+    const users = entries.map((e, i) => {
+      const h = hops(e.path);
+      return (n.peer ? h[0] === asn : h.slice(1).includes(asn)) ? i : -1;
+    }).filter((i) => i >= 0);
     const kind = n.origin ? "origin" : n.peer ? "peer" : "transit";
-    const a = el("a", isSet ? {} : { href: `https://bgp.tools/as/${n.id}`, target: "_blank", rel: "noopener" }, nodeLayer);
+    const a = el("a", isSet ? {} : { href: `https://bgp.tools/as/${asn}`, target: "_blank", rel: "noopener" }, nodeLayer);
     const grp = el("g", { class: `node ${kind}`, transform: `translate(${x},${y})`, "data-users": users.join(" ") }, a);
     el("rect", { width: g.nodeW, height: g.nodeH, rx: 10 }, grp);
-    const label = isSet ? fit(`{${n.id.slice(1, -1).split(",").map((s) => `AS${s}`).join(", ")}}`, nameMax + 2) : `AS${n.id}`;
+    const label = isSet ? fit(`{${asn.slice(1, -1).split(",").map((s) => `AS${s}`).join(", ")}}`, nameMax + 2) : `AS${asn}`;
     el("text", { x: 10, y: 18, class: "num" }, grp).textContent = label;
     const nameEl = el("text", { x: 10, y: 34, class: "name" }, grp);
     const tip = el("title", {}, grp);
@@ -161,10 +164,10 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
     if (isSet) {
       nameEl.textContent = "AS_SET (unordered)";
     } else {
-      asName(Number(n.id)).then(({ name }) => {
+      asName(Number(asn)).then(({ name }) => {
         if (!name) return;
         nameEl.textContent = fit(name, nameMax);
-        tip.textContent = `AS${n.id} ${name} (${role}); used by ${users.map((i) => entries[i].label).join(", ")}`;
+        tip.textContent = `AS${asn} ${name} (${role}); used by ${users.map((i) => entries[i].label).join(", ")}`;
       });
     }
   }
