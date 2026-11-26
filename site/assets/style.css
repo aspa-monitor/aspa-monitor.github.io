@@ -258,7 +258,9 @@ h1.hero {
   font: inherit; font-size: 0.82em; cursor: pointer; color: var(--fg);
   background: var(--chip); border: 1px solid var(--chip-line); border-radius: 999px; padding: 3px 10px;
 }
-.peer-chip .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.peer-chip .swatch { display: inline-block; width: 16px; height: 0; border-top: 3px solid var(--sw); border-radius: 2px; margin-right: 7px; vertical-align: 3px; }
+.peer-chip .swatch.dashed { border-top-style: dashed; }
+.pathgraph .stripe { stroke-width: 4; stroke-linecap: round; }
 .peer-chip:hover, .peer-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .graph-legend { display: flex; gap: 14px; margin-top: 10px; }
 .graph-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1.5px solid; }

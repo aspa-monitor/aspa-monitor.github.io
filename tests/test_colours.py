@@ -19,9 +19,13 @@ class TestColours(unittest.TestCase):
         self.assertEqual(got["a"], 1)
         self.assertEqual(sorted(got.values()), [0, 1, 2])
 
-    def test_more_than_eight(self):
+    def test_ninth_peer_gets_dashed_slot(self):
         got = assign_colours([f"s{i}" for i in range(9)], {})
-        self.assertIsNone(got["s8"])
+        self.assertEqual(got["s8"], 8)
+
+    def test_more_than_sixteen(self):
+        got = assign_colours([f"s{i}" for i in range(17)], {})
+        self.assertIsNone(got["s16"])
 
 
 if __name__ == "__main__":

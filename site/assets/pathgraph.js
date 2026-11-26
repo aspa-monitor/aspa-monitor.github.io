@@ -5,8 +5,13 @@
 import { asName } from "./asnames.js";
 
 const SVG = "http://www.w3.org/2000/svg";
-const COLOURS = 8; // style.css --peer-1 .. --peer-8; more peers than that share a neutral colour
-export const peerColour = (slot) => (slot != null && slot < COLOURS ? `var(--peer-${slot + 1})` : "var(--muted)");
+// 8 hues (style.css --peer-1 .. --peer-8). Slots 0-7 draw solid lines, 8-15 the same hues dashed, so each peer
+// keeps a distinct look without inventing extra colours; slots beyond 15 share a neutral grey.
+const HUES = 8;
+const SLOTS = 16;
+export const peerColour = (slot) => (slot != null && slot < SLOTS ? `var(--peer-${(slot % HUES) + 1})` : "var(--muted)");
+export const peerDashed = (slot) => slot != null && slot >= HUES && slot < SLOTS;
+const DASH = "7 4";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 /** Path text -> list of hops; consecutive repeats (prepending) collapse into one hop. */
@@ -172,7 +177,9 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
         m0 = m1 + boxMain; c0 = c1;
         if (s < ids.length - 1) d += ` L${xy(m0, c0)}`;
       }
-      const p = el("path", { d, class: "edge", style: `stroke:${peerColour(entries[u].slot)}`, "data-users": String(u) }, edgeLayer);
+      const slot = entries[u].slot;
+      const p = el("path", { d, class: "edge", "data-users": String(u),
+        style: `stroke:${peerColour(slot)}` + (peerDashed(slot) ? `;stroke-dasharray:${DASH}` : "") }, edgeLayer);
       el("title", {}, p).textContent = `${entries[u].label}: AS${asnOf.get(e.from)} → AS${asnOf.get(e.to)}`;
     });
   }
@@ -193,7 +200,9 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
     const grp = el("g", { class: `node ${kind}`, transform: `translate(${x},${y})`, "data-users": users.join(" ") }, a);
     el("rect", { width: g.nodeW, height: g.nodeH, rx: 10 }, grp);
     if (n.peer && users.length === 1) {
-      el("rect", { x: 4, y: 8, width: 4, height: g.nodeH - 16, rx: 2, class: "stripe", style: `fill:${peerColour(entries[users[0]].slot)}` }, grp);
+      const slot = entries[users[0]].slot;
+      el("line", { x1: 6, x2: 6, y1: 9, y2: g.nodeH - 9, class: "stripe",
+        style: `stroke:${peerColour(slot)}` + (peerDashed(slot) ? ";stroke-dasharray:4 3" : "") }, grp);
     }
     const label = isSet ? fit(`{${asn.slice(1, -1).split(",").map((s) => `AS${s}`).join(", ")}}`, nameMax + 2) : `AS${asn}`;
     el("text", { x: n.peer ? 14 : 10, y: 18, class: "num" }, grp).textContent = label;
@@ -224,7 +233,7 @@ export function renderPathGraph(entries, { width = 900 } = {}) {
     <p class="graph-hint small muted" hidden>Swipe sideways to see the whole graph.</p>
     <div class="graph-scroll"></div>
     <div class="graph-peers">${entries.map((e, i) =>
-      `<button type="button" class="peer-chip" data-i="${i}"><i class="swatch" style="background:${peerColour(e.slot)}"></i>${esc(e.label)}${prefixes.length > 1 ? ` <span class="muted">(${esc(e.prefix)})</span>` : ""}</button>`).join("")}</div>
+      `<button type="button" class="peer-chip" data-i="${i}"><i class="swatch${peerDashed(e.slot) ? " dashed" : ""}" style="--sw:${peerColour(e.slot)}"></i>${esc(e.label)}${prefixes.length > 1 ? ` <span class="muted">(${esc(e.prefix)})</span>` : ""}</button>`).join("")}</div>
     <div class="graph-legend small muted">
       <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span>
     </div>`;
