@@ -37,17 +37,6 @@ function pathHtml(path) {
   }).join('<span class="arrow">→</span>');
 }
 
-function prefixLinks(prefix) {
-  return `<a href="https://stat.ripe.net/${esc(prefix)}" target="_blank" rel="noopener">RIPEstat</a> · ` +
-    `<a href="https://bgp.tools/prefix/${esc(prefix)}" target="_blank" rel="noopener">bgp.tools</a>`;
-}
-
-function asLinks(asn) {
-  if (asn == null) return "";
-  return `<a href="https://stat.ripe.net/AS${esc(asn)}" target="_blank" rel="noopener">RIPEstat</a> · ` +
-    `<a href="https://bgp.tools/as/${esc(asn)}" target="_blank" rel="noopener">bgp.tools</a>`;
-}
-
 function lookupLink(prefix, source) {
   const u = new URLSearchParams({ q: prefix, source });
   return `<a href="?${u}">${esc(prefix)}</a>`;
@@ -84,7 +73,7 @@ function routeCard(r) {
     rows.push(["Raw AS path", `<code class="raw">${esc(r.rawPath)}</code> <span class="muted">(same as clean path)</span>`]);
   }
   rows.push(
-    ["Origin AS", r.origin != null ? `${asChip(r.origin)} <span class="links">${asLinks(r.origin)}</span>`
+    ["Origin AS", r.origin != null ? `${asChip(r.origin)}`
       : '<span class="muted">unknown (path ends in an AS_SET)</span>'],
     ["Path length", `${esc(r.length ?? "—")} <span class="muted">(prepends collapsed, an AS_SET counts as 1)</span>`],
     ["Last change", timeHtml(r.timestamp)],
@@ -135,7 +124,7 @@ function renderSource(res, q, src, multi) {
     head = `<p class="notice">No route for <code>${esc(q.text)}</code> itself. Longest covering prefix: <strong>${esc(match.prefix)}</strong></p>`;
   }
   const matchHtml = match ? `
-    <div class="prefix-head"><h3>${esc(match.prefix)}</h3><span class="links">${prefixLinks(match.prefix)}</span></div>
+    <div class="prefix-head"><h3>${esc(match.prefix)}</h3></div>
     ${match.routes.map(routeCard).join("")}` : "";
 
   let unloadedHtml = "";
@@ -167,8 +156,7 @@ function setBanner() {
   const hours = (Date.now() - asOf) / 3600e3;
   banner.className = hours > STALE_HOURS ? "banner stale" : "banner";
   banner.innerHTML = `RIS data as of <strong>${esc(formatIST(asOf))}</strong> (${esc(ago(asOf))})` +
-    (hours > STALE_HOURS ? ". The hourly update seems to be late." : ".") +
-    ` Updated hourly from <a href="https://github.com/aspa-monitor/ris-routing-data">ris-routing-data</a>.`;
+    (hours > STALE_HOURS ? ". The hourly update seems to be late." : ".");
 }
 
 function fillSources() {
