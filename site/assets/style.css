@@ -276,3 +276,52 @@ h1.hero {
   --peer-1: #3987e5; --peer-2: #d95926; --peer-3: #199e70; --peer-4: #c98500;
   --peer-5: #d55181; --peer-6: #0ca30c; --peer-7: #9085e9; --peer-8: #e66767;
 }
+
+/* ASPA statistics page */
+:root, [data-theme="daylight"], [data-theme="sand"] {
+  --v-none: #9aa3b5; --v-partial: #86b6ef; --v-full: #2a78d6; --v-valid: #008300; --v-invalid: #d92d20;
+}
+[data-theme="midnight"], [data-theme="ocean"] {
+  --v-none: #5d6678; --v-partial: #2f5f99; --v-full: #3987e5; --v-valid: #0ca30c; --v-invalid: #f04438;
+}
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 20px 0 8px; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+.tile-value { font-size: 1.75rem; font-weight: 750; letter-spacing: -0.02em; line-height: 1.15; }
+.tile-label { font-weight: 650; margin-top: 4px; }
+.tile-sub { margin-top: 2px; }
+.barlist { display: flex; flex-direction: column; gap: 14px; background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+.bar-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.bar-name { font-weight: 650; }
+.bar-num { font-variant-numeric: tabular-nums; }
+.bar-track { height: 10px; border-radius: 4px; background: var(--chip); margin: 6px 0 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; }
+.bar-fill.none, .dot.none { background: var(--v-none); }
+.bar-fill.partial, .dot.partial { background: var(--v-partial); }
+.bar-fill.full, .dot.full { background: var(--v-full); }
+.bar-fill.valid, .dot.valid { background: var(--v-valid); }
+.bar-fill.invalid, .dot.invalid { background: var(--v-invalid); }
+.trend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.chart-card { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.chart-card figcaption { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.chart { position: relative; }
+.linechart { width: 100%; height: auto; display: block; touch-action: pan-y; }
+.linechart .grid { stroke: var(--line); stroke-width: 1; }
+.linechart .axis { fill: var(--muted); font-size: 11px; font-family: var(--sans); }
+.linechart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.linechart .line.full { stroke: var(--v-full); }
+.linechart .line.invalid { stroke: var(--v-invalid); }
+.linechart .dotm { stroke: var(--card); stroke-width: 2; }
+.linechart .dotm.full { fill: var(--v-full); }
+.linechart .dotm.invalid { fill: var(--v-invalid); }
+.linechart .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.linechart .hit { fill: transparent; cursor: crosshair; }
+.chart .tip { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; white-space: nowrap;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; font-size: 0.82em; box-shadow: var(--shadow); }
+.aspa-lookup { max-width: 520px; }
+.aspa-lookup .field { flex: 1 1 200px; }
+.aspa-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); margin-top: 10px; }
+.aspa-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+table.list td .asn .asname { font-family: var(--sans); }
+@media (max-width: 640px) { .tile-value { font-size: 1.4rem; } .tile { padding: 12px 14px; } }

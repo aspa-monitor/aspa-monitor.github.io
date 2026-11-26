@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ASPA verdicts · ASPA Monitor</title>
+  <title>ASPA statistics · ASPA Monitor</title>
   <meta name="theme-color" content="#4f46e5">
-  <meta name="description" content="ASPA (Autonomous System Provider Authorization) verification results for observed BGP AS paths. Coming soon. Developed by Gaurav Kansal.">
+  <meta name="description" content="Daily ASPA (Autonomous System Provider Authorization) statistics: how many ASes publish ASPA, how observed BGP paths verify, top invalid customer/provider pairs, and an ASPA lookup per AS. Developed by Gaurav Kansal.">
   <link rel="canonical" href="https://aspa-monitor.gauravkansal.in/aspa/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ASPA Monitor">
-  <meta property="og:title" content="ASPA verdicts · ASPA Monitor">
-  <meta property="og:description" content="ASPA (Autonomous System Provider Authorization) verification results for observed BGP AS paths. Coming soon. Developed by Gaurav Kansal.">
+  <meta property="og:title" content="ASPA statistics · ASPA Monitor">
+  <meta property="og:description" content="Daily ASPA (Autonomous System Provider Authorization) statistics: how many ASes publish ASPA, how observed BGP paths verify, top invalid customer/provider pairs, and an ASPA lookup per AS. Developed by Gaurav Kansal.">
   <meta property="og:url" content="https://aspa-monitor.gauravkansal.in/aspa/">
   <meta name="twitter:card" content="summary">
   <meta name="author" content="Gaurav Kansal">
@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/assets/style.css">
   <script>try{var t=localStorage.getItem("theme");document.documentElement.dataset.theme=(!t||t==="auto")?(matchMedia("(prefers-color-scheme: dark)").matches?"midnight":"daylight"):t}catch(e){}</script>
   <script type="module" src="/assets/theme.js"></script>
+  <script type="module" src="/assets/aspa.js"></script>
 </head>
 <body>
   <header class="top">
@@ -26,17 +27,53 @@
     <nav><a href="/lookup/">Prefix lookup</a><a href="/aspa/" aria-current="page">ASPA</a></nav>
   </header>
   <main>
-    <h1>ASPA verdicts</h1>
-    <p class="banner">Coming later: ASPA verification results published by
-      <a href="https://github.com/aspa-monitor/aspa-validation">aspa-validation</a>.</p>
-    <p>Meanwhile, the <a href="/lookup/">prefix lookup</a> shows the routes and AS paths those verdicts will be based on.</p>
+    <h1>ASPA statistics</h1>
+    <p id="aspa-status" class="banner">Loading ASPA statistics from BGPKIT…</p>
+    <p class="muted small">ASPA lets an AS publish, in the RPKI, which ASes are its upstream providers, so routers can
+      spot paths that could not have happened (route leaks and some hijacks). Until this site publishes its own
+      verdicts, these numbers come live from the free <a href="https://bgpkit.com/api">BGPKIT API</a>.</p>
+
+    <div id="tiles" class="tiles" aria-live="polite"></div>
+
+    <section>
+      <h2 id="verdicts-title">How observed paths verify</h2>
+      <div id="verdicts"></div>
+    </section>
+
+    <section>
+      <h2>Daily trend</h2>
+      <div class="trend-grid">
+        <figure class="chart-card"><figcaption><strong>Paths with ASPA evidence</strong>
+          <span class="muted small">share of the day's paths where at least one hop is covered by ASPA</span></figcaption>
+          <div id="trend-evidence" class="chart"></div></figure>
+        <figure class="chart-card"><figcaption><strong>Definitely invalid paths</strong>
+          <span class="muted small">paths that contradict a published ASPA (a lower bound, not a leak rate)</span></figcaption>
+          <div id="trend-invalid" class="chart"></div></figure>
+      </div>
+    </section>
+
+    <section>
+      <h2>Top invalid customer / provider pairs</h2>
+      <p class="muted small">The customer AS's ASPA does not list the provider that appears above it in the path.
+        This can be a route leak, or an ASPA that is missing a provider.</p>
+      <div id="pairs"></div>
+    </section>
+
+    <section>
+      <h2>ASPA of an AS</h2>
+      <form id="aspa-form" class="lookup aspa-lookup" autocomplete="off">
+        <label class="field"><span>AS number</span><input id="asn" name="asn" inputmode="numeric" placeholder="148000" required></label>
+        <button type="submit">Show ASPA</button>
+      </form>
+      <div id="aspa-result" aria-live="polite"></div>
+    </section>
   </main>
   <footer>
     <p class="credit">Designed, implemented and owned by <a href="https://www.gauravkansal.in/" rel="author">Gaurav Kansal</a>.</p>
     <p class="disclaimer"><strong>Disclaimer:</strong> this is a best-effort project, provided as is and without
       any warranty. Data can be delayed, incomplete or wrong. Check important findings against other sources
       before acting on them.</p>
-    <p>Routing data: <a href="https://ris.ripe.net/">RIPE NCC RIS</a>.
+    <p>ASPA statistics: <a href="https://bgpkit.com/api">BGPKIT API</a>. Routing data: <a href="https://ris.ripe.net/">RIPE NCC RIS</a>.
       Times are IST (UTC+05:30).</p>
   </footer>
 </body>

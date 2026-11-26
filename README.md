@@ -19,7 +19,10 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   AS names are fetched live in the browser from the RIPEstat `as-overview` API (8 s timeout), cached in `localStorage`
   for 7 days. If RIPEstat fails or has no name, the page uses the site's own copy of RIPE NCC's
   [asn.txt](https://ftp.ripe.net/ripe/asnames/asn.txt) (all RIRs), shown in italics and cached for 1 day.
-- `/aspa/` — ASPA verdicts (later).
+- `/aspa/` — ASPA statistics, interim: fetched live in the browser from the free [BGPKIT API](https://bgpkit.com/api)
+  (`site/assets/aspa.js`; ASes with ASPA, the day's path verdicts in BGPKIT's five buckets, daily trend, top invalid
+  customer/provider pairs, and the ASPA of any AS). Replaced by this project's own verdicts once aspa-validation
+  publishes them.
 - Colour themes: Auto (follows the system), Daylight, Midnight, Ocean, Sand. Picker in the header (`site/assets/theme.js`),
   saved in `localStorage`; theme colours are CSS variables per `[data-theme]` in `site/assets/style.css`.
 
