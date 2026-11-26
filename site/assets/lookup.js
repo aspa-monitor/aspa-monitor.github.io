@@ -3,6 +3,7 @@ import { loadManifest, lookup, MAX_LOAD_FILES } from "./risdata.js";
 import { FLAG_INFO, splitList } from "./flags.js";
 import { fillNames } from "./asnames.js";
 import { formatIST, formatUnixIST, ago } from "./timefmt.js";
+import { renderPathGraph } from "./pathgraph.js";
 
 const MAX_LIST_ROWS = 200;
 const STALE_HOURS = 3;
@@ -173,26 +174,55 @@ async function run(text, sourceName, { loadAllFor = null } = {}) {
   }
   q.text = q.isAddress ? text.trim() : formatPrefix(q.afi, q.net, q.len);
   document.title = `${q.text} · Prefix lookup · ASPA Monitor`;
-  const sources = sourceName === "all" ? manifest.sources : manifest.sources.filter((s) => s.name === sourceName);
-  if (!sources.length) {
+  const picked = sourceName === "all" ? manifest.sources : manifest.sources.filter((s) => s.name === sourceName);
+  if (!picked.length) {
     results.innerHTML = `<p class="error">Unknown source "${esc(sourceName)}".</p>`;
     return;
   }
+  // Leave out peers that send RIS no routes of this address family (e.g. IPv4-only peers).
+  const hasFamily = (s) => s[`v${q.afi}`] == null || s[`v${q.afi}`] > 0;
+  const sources = picked.filter(hasFamily);
+  const skipped = picked.filter((s) => !hasFamily(s));
   const note = q.hostBits
     ? `<p class="notice">Host bits were set; looking up the network <code>${esc(q.text)}</code> instead.</p>` : "";
   const qlabel = q.isAddress ? `address ${q.text} (IPv${q.afi}, longest match)` : `prefix ${q.text} (IPv${q.afi})`;
   results.innerHTML = `${note}<p class="muted">Looking up ${esc(qlabel)}…</p>`;
 
-  const sections = await Promise.all(sources.map(async (src) => {
+  if (!sources.length) {
+    results.innerHTML = `${note}<p class="notice">${esc(sourceLabel(picked[0]))} sends RIS no IPv${q.afi} routes, ` +
+      `so there is nothing to look up here. Choose another source or All sources.</p>`;
+    return;
+  }
+  const skippedNote = skipped.length
+    ? `<p class="muted small">Not shown (no IPv${q.afi} routes from these peers): ${skipped.map((s) => esc(sourceLabel(s))).join(", ")}.</p>` : "";
+
+  const multi = sources.length > 1;
+  const done = await Promise.all(sources.map(async (src) => {
     try {
       const res = await lookup(src.name, q, { loadAll: loadAllFor === src.name || loadAllFor === "all" });
-      return renderSource(res, q, src, sources.length > 1);
+      return { src, res, html: renderSource(res, q, src, multi) };
     } catch (e) {
-      return `<section class="source-result">${sources.length > 1 ? `<h2>${esc(sourceLabel(src))}</h2>` : ""}<p class="error">Could not load data: ${esc(e.message)}</p></section>`;
+      return { src, html: `<section class="source-result">${multi ? `<h2>${esc(sourceLabel(src))}</h2>` : ""}<p class="error">Could not load data: ${esc(e.message)}</p></section>` };
     }
   }));
-  results.innerHTML = `${note}<p class="muted">Results for ${esc(qlabel)}.</p>${sections.join("")}`;
+  results.innerHTML = `${note}<p class="muted">Results for ${esc(qlabel)}.</p>${skippedNote}<div class="graph-slot"></div>` +
+    done.map((d) => d.html).join("");
   fillNames(results);
+
+  // One graph of every peer's path to the matched prefix (each distinct path per source counts once).
+  const entries = [];
+  for (const { src, res } of done) {
+    if (!res || !res.match) continue;
+    const seen = new Set();
+    for (const r of res.match.routes) {
+      if (!r.path || seen.has(r.path)) continue;
+      seen.add(r.path);
+      entries.push({ label: sourceLabel(src), prefix: res.match.prefix, path: r.path });
+    }
+  }
+  const slot = results.querySelector(".graph-slot");
+  const graph = entries.length ? renderPathGraph(entries, { width: (slot.clientWidth || results.clientWidth || 940) - 52 }) : null;
+  if (graph) slot.replaceWith(graph); else slot.remove();
 }
 
 function current() {

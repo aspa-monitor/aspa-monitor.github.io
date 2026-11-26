@@ -223,6 +223,8 @@ def shard_source(source: dict, work: Path, out: Path) -> dict:
         "peer_asn": source.get("peer_asn"),
         "as_of": source["as_of"],
         "routes": index["counts"]["routes"],
+        "v4": index["counts"]["v4"],
+        "v6": index["counts"]["v6"],
         "files": files + 1,
         "site_bytes": total_bytes,
     }
