@@ -169,7 +169,7 @@ function fillSources() {
     [...groups].map(([k, opts]) => `<optgroup label="${esc(k)}">${opts.join("")}</optgroup>`).join("");
 }
 
-async function run(text, sourceName, { loadAllFor = null } = {}) {
+async function run(text, sourceName, { loadAllFor = null, missingSource = null } = {}) {
   const q = parseQuery(text);
   if (q.error) {
     results.innerHTML = `<p class="error">${esc(q.error)}</p>`;
@@ -186,8 +186,10 @@ async function run(text, sourceName, { loadAllFor = null } = {}) {
   const hasFamily = (s) => s[`v${q.afi}`] == null || s[`v${q.afi}`] > 0;
   const sources = picked.filter(hasFamily);
   const skipped = picked.filter((s) => !hasFamily(s));
-  const note = q.hostBits
-    ? `<p class="notice">Host bits were set; looking up the network <code>${esc(q.text)}</code> instead.</p>` : "";
+  const note = (missingSource
+    ? `<p class="notice">Source <code>${esc(missingSource)}</code> is no longer in the data; showing all sources.</p>` : "") +
+    (q.hostBits
+    ? `<p class="notice">Host bits were set; looking up the network <code>${esc(q.text)}</code> instead.</p>` : "");
   const qlabel = q.isAddress ? `address ${q.text} (IPv${q.afi}, longest match)` : `prefix ${q.text} (IPv${q.afi})`;
   results.innerHTML = `${note}<p class="muted">Looking up ${esc(qlabel)}…</p>`;
 
@@ -238,8 +240,11 @@ function go(q, source, push = true) {
   const u = new URLSearchParams({ q, source });
   if (push) history.pushState(null, "", `?${u}`);
   input.value = q;
-  if ([...select.options].some((o) => o.value === source)) select.value = source;
-  if (q) run(q, select.value);
+  // A link can name a peer that has since been removed from the data: say so and show all sources.
+  const known = [...select.options].some((o) => o.value === source);
+  if (known) select.value = source;
+  else if (source) select.value = "all";
+  if (q) run(q, select.value, { missingSource: known || !source ? null : source });
 }
 
 form.addEventListener("submit", (e) => {
