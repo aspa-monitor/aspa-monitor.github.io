@@ -5,6 +5,7 @@
 // (the draft's "downstream" procedure, the same view BGPKIT and Cloudflare Radar take for collector data):
 // from the origin the path may climb through authorised providers, then descend through authorised providers
 // to the peer. Prepends are collapsed first; a path with an AS_SET is Invalid.
+import { fetchRetry } from "./retry.js";
 
 /** Pair check. x sent the route to y. "P": x's ASPA lists y (Provider+), "N": x has an ASPA without y
  *  (Not Provider+), "U": x has no ASPA (No Attestation). */
@@ -135,7 +136,7 @@ export function parseAspas(doc) {
 
 let loading = null;
 export function loadAspas() {
-  loading ||= fetch("/data/aspa/aspas.json").then((r) => {
+  loading ||= fetchRetry("/data/aspa/aspas.json").then((r) => {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json();
   }).then(parseAspas);

@@ -3,6 +3,7 @@
 // rebuilt hourly. Results are cached in localStorage: 7 days for RIPEstat names, 1 day for backup
 // names (so RIPEstat is tried again soon).
 import { asnCategory } from "./flags.js";
+import { fetchRetry } from "./retry.js";
 
 const API = "https://stat.ripe.net/data/as-overview/data.json";
 const BACKUP = "/data/asnames/";
@@ -72,7 +73,7 @@ const buckets = new Map();
 async function fromBackup(asn) {
   const i = asn % BUCKETS;
   if (!buckets.has(i)) {
-    const p = fetch(`${BACKUP}${i}.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+    const p = fetchRetry(`${BACKUP}${i}.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
     buckets.set(i, p);
   }
   const names = await buckets.get(i);

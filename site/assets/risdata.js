@@ -1,5 +1,6 @@
 // Loading the sharded RIS data (built by pipeline/ris/shard.py) and answering lookups. No DOM.
 import { WIDTH, covers, nodeId, parsePrefix } from "./prefix.js";
+import { fetchRetry } from "./retry.js";
 
 export const DATA_ROOT = "/data/ris/";
 const BASE = { 4: 8, 6: 16 };
@@ -12,7 +13,7 @@ export const MAX_LOAD_FILES = 64;
 const cache = new Map();
 export function getJSON(url) {
   if (!cache.has(url)) {
-    const p = fetch(url).then((r) => {
+    const p = fetchRetry(url).then((r) => {
       if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
       return r.json();
     });
@@ -26,7 +27,7 @@ export function getJSON(url) {
  * decoded it (Content-Encoding: gzip), the bytes are JSON and are used as they are. */
 export function getGzJSON(url) {
   if (!cache.has(url)) {
-    const p = fetch(url).then(async (r) => {
+    const p = fetchRetry(url).then(async (r) => {
       if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
       const buf = new Uint8Array(await r.arrayBuffer());
       if (buf[0] !== 0x1f || buf[1] !== 0x8b) return JSON.parse(new TextDecoder().decode(buf));
