@@ -23,7 +23,8 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   (`site/assets/peergroups.js`). With more than 6 distinct paths the graph shows the 6 that add the most ASes, with a
   "Show all" button; the per-peer route sections below always list every peer. Graph boxes show the organisation
   part of an AS name ("AT&T Enterprises, LLC" from "ATT-INTERNET4 - AT&T Enterprises, LLC"; full name in the tooltip),
-  and the origin box carries the same RPKI ROV verdict as the route cards. Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
+  and the origin box carries the same RPKI ROV verdict as the route cards, outlined green (valid), red (invalid) or
+  grey (not found). AS numbers are plain chips, not links. Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
   AS names are fetched live in the browser from the RIPEstat `as-overview` API (8 s timeout), cached in `localStorage`
   for 7 days. If RIPEstat fails or has no name, the page uses the site's own copy of RIPE NCC's
   [asn.txt](https://ftp.ripe.net/ripe/asnames/asn.txt) (all RIRs), shown in italics and cached for 1 day.

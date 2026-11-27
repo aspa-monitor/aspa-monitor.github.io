@@ -13,8 +13,8 @@ const small = (x) => (x * 100 < 0.1 ? `${(x * 100).toFixed(3)}%` : x * 100 < 1 ?
 const fmtDate = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 function asChip(asn) {
-  return `<a class="asn" data-asn="${esc(asn)}" href="https://bgp.tools/as/${esc(asn)}" target="_blank" rel="noopener">` +
-    `<span class="asnum">AS${esc(asn)}</span><span class="asname"></span></a>`;
+  return `<span class="asn" data-asn="${esc(asn)}">` +
+    `<span class="asnum">AS${esc(asn)}</span><span class="asname"></span></span>`;
 }
 
 // BGPKIT's five path buckets, in their order. Text labels always go with the colour.

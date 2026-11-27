@@ -163,7 +163,7 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
     ${allGroups.length > MAX_GROUPS ? `<p class="graph-more"><button type="button" class="graph-toggle">${showAll
       ? `Show the ${MAX_GROUPS} main paths` : `Show all ${allGroups.length} paths`}</button></p>` : ""}
     <div class="graph-legend small muted">
-      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS, with its RPKI ROV verdict</span>
+      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>
     </div>`;
   fig.querySelector(".graph-scroll").appendChild(svg);
   fig.querySelector(".graph-toggle")?.addEventListener("click", () => {
@@ -207,18 +207,22 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
 const ROV_TEXT = { valid: "ROV valid", invalid: "ROV invalid", none: "ROV not found" };
 
 /**
- * RPKI ROV pill in an origin box at (x, y): the same verdict and request as the route cards (rov.js).
+ * RPKI ROV pill in an origin box at (x, y), plus the box's verdict colour: the same verdict and request as the
+ * route cards (rov.js).
  * If the origin announces several matched prefixes with different verdicts, the pill says "mixed".
  */
 function rovBadge(grp, x, y, asn, prefixes) {
   const pill = el("g", { class: "rov-pill pending", transform: `translate(${x},${y})` }, grp);
-  const rect = el("rect", { width: 70, height: 15, rx: 7.5 }, pill);
-  const text = el("text", { x: 7, y: 11 }, pill);
+  const rect = el("rect", { width: 70, height: 16, rx: 8 }, pill);
+  const text = el("text", { x: 7, y: 11.5 }, pill);
   const tip = el("title", {}, pill);
   const set = (label, tone, tipText) => {
     text.textContent = label;
     pill.setAttribute("class", `rov-pill ${tone}`);
-    rect.setAttribute("width", String(Math.ceil(label.length * 5.7 + 14)));
+    // The whole origin box is outlined in the verdict's colour: green valid, red invalid, grey not found.
+    grp.classList.remove("rov-valid", "rov-invalid", "rov-none", "rov-pending");
+    grp.classList.add(`rov-${tone}`);
+    rect.setAttribute("width", String(Math.ceil(label.length * 6.2 + 14)));
     tip.textContent = tipText;
   };
   set("ROV …", "pending", "Checking RPKI ROV…");
@@ -325,9 +329,9 @@ function drawGraph(entries, width) {
     const kind = n.origin ? "origin" : n.peer ? "peer" : "transit";
     const role = n.origin ? "origin AS" : n.peer ? "peer AS" : "transit AS";
     const usedBy = () => `used by ${users.map((i) => entries[i].label).join(", ")}`;
-    const a = el("a", isSet || n.numLines ? {} : { href: `https://bgp.tools/as/${asn}`, target: "_blank", rel: "noopener" }, nodeLayer);
-    const grp = el("g", { class: `node ${kind}`, transform: `translate(${x},${y})`, "data-users": users.join(" ") }, a);
-    el("rect", { width: bw, height: bh, rx: 10 }, grp);
+    const grp = el("g", { class: `node ${kind}`, transform: `translate(${x},${y})`, "data-users": users.join(" ") }, nodeLayer);
+    if (n.rov) el("rect", { x: -4, y: -4, width: bw + 8, height: bh + 8, rx: 13, class: "rov-ring" }, grp);
+    el("rect", { width: bw, height: bh, rx: 10, class: "box" }, grp);
     if (n.peer && users.length === 1) {
       // One stripe segment per member peer, in its own colour.
       const members = entries[users[0]].members;

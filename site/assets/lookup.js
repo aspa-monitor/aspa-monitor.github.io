@@ -24,8 +24,8 @@ let manifest = null;
 
 function asChip(asn) {
   if (asn == null || asn === "") return "—";
-  return `<a class="asn" data-asn="${esc(asn)}" href="https://bgp.tools/as/${esc(asn)}" target="_blank" rel="noopener">` +
-    `<span class="asnum">AS${esc(asn)}</span><span class="asname"></span></a>`;
+  return `<span class="asn" data-asn="${esc(asn)}">` +
+    `<span class="asnum">AS${esc(asn)}</span><span class="asname"></span></span>`;
 }
 
 function pathHtml(path) {
