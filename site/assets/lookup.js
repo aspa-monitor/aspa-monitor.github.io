@@ -177,7 +177,7 @@ function renderSource(res, q, src, multi, aspa) {
   }
 
   return `<section class="source-result" data-source="${esc(src.name)}">
-    ${multi ? `<h2>${esc(sourceLabel(src))} <span class="muted small">${esc(collectorLabel(src))} · data as of ${esc(formatIST(asOf))}</span></h2>` : ""}
+    ${multi ? `<h2>${src.note ? `<span class="has-note" title="${esc(src.note)}">${esc(sourceLabel(src))}</span>` : esc(sourceLabel(src))} <span class="muted small">${esc(collectorLabel(src))} · data as of ${esc(formatIST(asOf))}</span></h2>` : ""}
     ${head}
     ${matchHtml}
     ${wantCovering(q, match) ? `<h3>Covering prefixes (less specific)</h3>
@@ -273,7 +273,7 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
       seen.add(r.path);
       const verdict = aspaOf(r, aspa)?.verdict ?? null;
       // split: peers whose ASPA verdicts differ are never merged into one box (their first pair differs).
-      entries.push({ label: sourceLabel(src), name: src.display_name || null, source: src.name, prefix: res.match.prefix, path: r.path,
+      entries.push({ label: sourceLabel(src), name: src.display_name || null, note: src.note || null, source: src.name, prefix: res.match.prefix, path: r.path,
         aspa: verdict, split: verdict, aspaPairs: aspaOf(r, aspa)?.pairs ?? null,
         slot: Number.isInteger(src.colour) ? src.colour : manifest.sources.indexOf(src) });
     }

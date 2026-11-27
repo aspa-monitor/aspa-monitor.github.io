@@ -413,3 +413,7 @@ h1.hero {
 .aspa-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 table.list td .asn .asname { font-family: var(--sans); }
 @media (max-width: 640px) { .tile-value { font-size: 1.4rem; } .tile { padding: 12px 14px; } }
+
+/* Peer notes from the manifest (e.g. which network most of a peer's routes go via). */
+.has-note { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.peer-note { margin-top: 2px; max-width: 32em; white-space: normal; }

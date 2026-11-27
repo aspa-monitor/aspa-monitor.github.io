@@ -14,7 +14,8 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
     banner.innerHTML = `Routing data as of <strong>${esc(formatIST(asOf))}</strong> (${esc(ago(asOf))}); ` +
       `site built ${esc(formatIST(new Date(m.built_at)))}.` + (stale ? " The hourly update seems to be late." : "");
     tbody.innerHTML = m.sources.map((s) => `<tr><td><code>${esc(s.name)}</code></td><td>${esc(collectorLabel(s))}</td>` +
-      `<td>${s.display_name ? `${esc(s.display_name)} ` : ""}<span class="muted">AS${esc(s.peer_asn)}</span></td>` +
+      `<td${s.note ? ` title="${esc(s.note)}"` : ""}>${s.display_name ? `${esc(s.display_name)} ` : ""}<span class="muted">AS${esc(s.peer_asn)}</span>` +
+      (s.note ? `<div class="muted small peer-note">${esc(s.note)}</div>` : "") + `</td>` +
       `<td class="num">${esc(s.routes.toLocaleString())}</td>` +
       `<td>${esc(formatIST(new Date(s.as_of)))}</td></tr>`).join("");
   } catch (e) {

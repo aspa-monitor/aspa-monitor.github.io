@@ -79,15 +79,17 @@ class ShardSourceTest(unittest.TestCase):
             write_gz(work / "r.tsv.gz", ROUTES_HEADER +
                      "4\t1.0.0.0/24\t206.126.236.1\t6939\tp1\t13335\t\t\t\t\t\t1795507729\n")
             write_gz(work / "p.tsv.gz", PATHS_HEADER + "p1\t6939 13335\t6939 13335\t2\t13335\t\t\t1\t1\n")
-            (work / "m.json").write_text('{"archive": "routeviews"}')
+            (work / "m.json").write_text('{"source": {"archive": "routeviews"}}')
             name = "route-views.eqix_AS6939"
             src = {"name": name, "collector": "route-views.eqix", "peer_asn": 6939,
                    "as_of": "2026-11-27T16:30:00+05:30", "meta": "m.json",
                    "display_name": "Hurricane Electric", "collector_location": "Ashburn (Equinix)",
+                   "note": "Effectively a US view.",
                    "files": {"routes": {"asset": "r.tsv.gz"}, "paths": {"asset": "p.tsv.gz"}}}
             summary = shard.shard_source(src, work, out)
             self.assertEqual(summary["name"], name)
             self.assertEqual(summary["archive"], "routeviews")
+            self.assertEqual(summary["note"], "Effectively a US view.")
             self.assertEqual(summary["routes"], 1)
             self.assertTrue((out / name / "index.json").exists())
             self.assertTrue((out / name / "meta.json").exists())
@@ -110,6 +112,7 @@ class ShardSourceTest(unittest.TestCase):
             self.assertEqual(summary["routes"], 3)
             self.assertEqual(summary["display_name"], "AT&T")
             self.assertIsNone(summary["collector_location"])  # optional upstream field
+            self.assertIsNone(summary["note"])
 
             index = json.loads((out / "t_src" / "index.json").read_text())
             self.assertEqual(index["peers"], ["12.0.1.63", "2001:1890:111d:1::63"])

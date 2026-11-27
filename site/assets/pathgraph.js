@@ -462,13 +462,16 @@ function drawGraph(entries, width, variant = "paths") {
       const nameEl = el("text", { x: tx, y: 18 + 15 * (n.numLines.length - 1) + 16, class: "name" }, grp);
       const members = entries[users[0]].members;
       const asList = n.peers.map((p) => `AS${p}`).join(" + ");
-      tip.textContent = `${asList} · peers with the same path`;
+      // Several peers share this box, so each note names its peer.
+      const notes = [...new Set(members.filter((mb) => mb.note).map((mb) => `${mb.name || mb.label}: ${mb.note}`))];
+      const noteText = notes.length ? `\n${notes.join("\n")}` : "";
+      tip.textContent = `${asList} · peers with the same path${noteText}`;
       Promise.all(n.peers.map(async (p) => {
         const named = members.find((mb) => mb.name && hops(mb.path)[0] === p);
         return named ? named.name : shortName((await asName(Number(p))).name) || `AS${p}`;
       })).then((names) => {
         nameEl.textContent = fit(names.join(" + "), nameMax);
-        tip.textContent = `${asList}: ${names.join(" + ")} · peers with the same path`;
+        tip.textContent = `${asList}: ${names.join(" + ")} · peers with the same path${noteText}`;
       });
       continue;
     }
@@ -476,14 +479,18 @@ function drawGraph(entries, width, variant = "paths") {
     const label = isSet ? fit(`{${asn.slice(1, -1).split(",").map((s) => `AS${s}`).join(", ")}}`, nameMax + 2) : `AS${asn}`;
     el("text", { x: tx, y: 18, class: "num" }, grp).textContent = label;
     const nameEl = el("text", { x: tx, y: 34, class: "name" }, grp);
-    tip.textContent = `${label} · ${role}`;
+    // A peer box also carries the manifest's note about that peer (e.g. which network most of its routes use).
+    const peerNotes = n.peer ? [...new Set(users.flatMap((i) => (entries[i].members || [entries[i]]))
+      .filter((mb) => mb.note && hops(mb.path)[0] === asn).map((mb) => mb.note))] : [];
+    const noteText = peerNotes.length ? `\n${peerNotes.join("\n")}` : "";
+    tip.textContent = `${label} · ${role}${noteText}`;
     if (isSet) {
       nameEl.textContent = "AS_SET (unordered)";
     } else {
       asName(Number(asn)).then(({ name }) => {
         if (!name) return;
         nameEl.textContent = fit(shortName(name), nameMax); // full "HANDLE - Organisation" in the tooltip
-        tip.textContent = `AS${asn} ${name} · ${role}`;
+        tip.textContent = `AS${asn} ${name} · ${role}${noteText}`;
       });
     }
   }
