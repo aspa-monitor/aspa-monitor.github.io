@@ -1,11 +1,8 @@
 // ASPA statistics page. Interim: everything comes live from the free BGPKIT API (CORS-enabled, no key),
-// until aspa-validation publishes this site's own verdicts. Responses are cached in sessionStorage for
-// 30 minutes so reloading the page doesn't hit the API again.
+// until aspa-validation publishes this site's own verdicts (client and 30-minute cache in bgpkit.js).
 import { fillNames } from "./asnames.js";
+import { api } from "./bgpkit.js";
 
-const API = "https://api.bgpkit.com/v4/rpki";
-const CACHE_MS = 30 * 60 * 1000;
-const TIMEOUT_MS = 20000;
 const RADAR = "https://radar.cloudflare.com/routing/aspa-validation?path=";
 
 const $ = (s) => document.querySelector(s);
@@ -14,27 +11,6 @@ const int = (n) => Number(n).toLocaleString(); // same grouping as the rest of t
 const pct = (x, digits = 1) => `${(x * 100).toFixed(digits)}%`;
 const small = (x) => (x * 100 < 0.1 ? `${(x * 100).toFixed(3)}%` : x * 100 < 1 ? `${(x * 100).toFixed(2)}%` : pct(x));
 const fmtDate = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-
-async function api(path) {
-  const key = `bgpkit:${path}`;
-  try {
-    const hit = JSON.parse(sessionStorage.getItem(key) || "null");
-    if (hit && Date.now() - hit.t < CACHE_MS) return hit.v;
-  } catch { /* no storage */ }
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
-  try {
-    const r = await fetch(`${API}/${path}`, { signal: ctl.signal });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const v = await r.json();
-    try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), v })); } catch { /* full */ }
-    return v;
-  } catch (e) {
-    throw new Error(e.name === "AbortError" ? "no answer within 20 s" : e.message);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function asChip(asn) {
   return `<a class="asn" data-asn="${esc(asn)}" href="https://bgp.tools/as/${esc(asn)}" target="_blank" rel="noopener">` +

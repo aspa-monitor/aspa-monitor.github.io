@@ -14,13 +14,16 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
 - `/lookup/` — RIS prefix lookup. Takes a prefix (exact match, or longest covering prefix) or an IP address
   (longest match), IPv4 or IPv6. Shows each route's AS path (clean and raw), origin, path length, last change (IST),
   communities, OTC, aggregator, AS_SET members and flags with explanations, plus covering and more-specific prefixes.
+  Each route gets an RPKI ROV badge (valid / invalid / not found for prefix + origin), live from the BGPKIT API
+  (`site/assets/rov.js`, daily RPKI snapshot); for an invalid route the covering ROAs say why (wrong origin or too
+  specific for maxLength). Interim, until rpki-aspa-data publishes ROAs.
   An AS path graph merges every peer's path to the matched prefix (`site/assets/pathgraph.js`); peers that send RIS
   no routes of the queried family (e.g. IPv4-only peers) are left out. Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
   AS names are fetched live in the browser from the RIPEstat `as-overview` API (8 s timeout), cached in `localStorage`
   for 7 days. If RIPEstat fails or has no name, the page uses the site's own copy of RIPE NCC's
   [asn.txt](https://ftp.ripe.net/ripe/asnames/asn.txt) (all RIRs), shown in italics and cached for 1 day.
 - `/aspa/` — ASPA statistics, interim: fetched live in the browser from the free [BGPKIT API](https://bgpkit.com/api)
-  (`site/assets/aspa.js`; ASes with ASPA, the day's path verdicts in BGPKIT's five buckets, daily trend, top invalid
+  (`site/assets/aspa.js`, client in `site/assets/bgpkit.js`; ASes with ASPA, the day's path verdicts in BGPKIT's five buckets, daily trend, top invalid
   customer/provider pairs, and the ASPA of any AS). Replaced by this project's own verdicts once aspa-validation
   publishes them.
 - Colour themes: Auto (follows the system), Daylight, Midnight, Ocean, Sand. Picker in the header (`site/assets/theme.js`),

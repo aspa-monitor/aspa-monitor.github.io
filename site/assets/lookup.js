@@ -4,6 +4,7 @@ import { FLAG_INFO, splitList } from "./flags.js";
 import { fillNames } from "./asnames.js";
 import { formatIST, formatUnixIST, ago } from "./timefmt.js";
 import { renderPathGraph } from "./pathgraph.js";
+import { rovSlot, fillRov } from "./rov.js";
 
 const MAX_LIST_ROWS = 200;
 const STALE_HOURS = 3;
@@ -76,6 +77,7 @@ function routeCard(r) {
   rows.push(
     ["Origin AS", r.origin != null ? `${asChip(r.origin)}`
       : '<span class="muted">unknown (path ends in an AS_SET)</span>'],
+    ["RPKI ROV", rovSlot(r.prefix, r.origin)],
     ["Path length", `${esc(r.length ?? "—")} <span class="muted">(prepends collapsed, an AS_SET counts as 1)</span>`],
     ["Last change", timeHtml(r.timestamp)],
     ["Communities", communitiesHtml(r.communities)],
@@ -223,6 +225,7 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
   results.innerHTML = `${note}<p class="muted">Results for ${esc(qlabel)}.</p>${skippedNote}<div class="graph-slot"></div>` +
     done.map((d) => d.html).join("");
   fillNames(results);
+  fillRov(results);
 
   // One graph of every peer's path to the matched prefix (each distinct path per source counts once).
   const entries = [];
