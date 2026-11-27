@@ -51,3 +51,26 @@ class TestStampAssets(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCodeFailureGuard(unittest.TestCase):
+    """Every page reloads once if its code fails to load (a 503 on any module blanks the page otherwise)."""
+
+    def test_every_module_script_has_the_guard(self):
+        for page in (REPO / "site").rglob("*.html"):
+            text = page.read_text()
+            tags = re.findall(r"<script type=\"module\"[^>]*>", text)
+            self.assertTrue(tags, page)
+            self.assertIn("window.codeFailed=function", text, page)
+            self.assertLess(text.index("window.codeFailed=function"), text.index('<script type="module"'), page)
+            for tag in tags:
+                self.assertIn('onerror="codeFailed()"', tag, f"{page}: {tag}")
+
+    def test_stamping_keeps_the_guard(self):
+        with tempfile.TemporaryDirectory() as d:
+            import shutil
+            out = Path(d) / "site"
+            shutil.copytree(REPO / "site", out)
+            v = stamp_assets(out)
+            html = (out / "lookup" / "index.html").read_text()
+            self.assertIn(f'src="/assets/lookup.js?v={v}" onerror="codeFailed()"', html)
