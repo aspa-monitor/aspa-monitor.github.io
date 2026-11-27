@@ -3,7 +3,7 @@ import { loadManifest, lookup, MAX_LOAD_FILES, sourceLabel, collectorLabel, site
 import { FLAG_INFO, splitList } from "./flags.js";
 import { fillNames } from "./asnames.js";
 import { formatIST, formatUnixIST, ago } from "./timefmt.js";
-import { renderPathGraph } from "./pathgraph.js";
+import { renderGraphPanel } from "./pathgraph.js";
 import { rovSlot, fillRov } from "./rov.js";
 import { loadAspas, verifyPath, VERDICT_LABEL } from "./aspapath.js";
 import { hops } from "./peergroups.js";
@@ -280,10 +280,9 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
   }
   const slot = results.querySelector(".graph-slot");
   const gw = (slot.clientWidth || results.clientWidth || 940) - 52;
-  const graph = entries.length ? renderPathGraph(entries, { width: gw }) : null;
+  // Tabs: the path graph, and (trial) the same paths with lines coloured by inferred AS relationship (asrel.js).
+  const graph = entries.length ? renderGraphPanel(entries, { width: gw, withRel: SHOW_REL_MAP }) : null;
   if (graph) slot.replaceWith(graph); else slot.remove();
-  // Trial: a second map of the same paths, lines coloured by inferred AS relationship (asrel.js).
-  if (graph && SHOW_REL_MAP) graph.after(renderPathGraph(entries, { width: gw, variant: "rel" }));
 }
 
 // Looked up when "Look up" is pressed with an empty box.

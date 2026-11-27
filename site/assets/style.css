@@ -419,3 +419,16 @@ table.list td .asn .asname { font-family: var(--sans); }
 /* Peer notes from the manifest (e.g. which network most of a peer's routes go via). */
 .has-note { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 .peer-note { margin-top: 2px; max-width: 32em; white-space: normal; }
+
+/* Lookup graph card: tabs (AS paths / AS relationships) and the layout choice. */
+.graph-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  margin: -4px 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.graph-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.graph-tab, .graph-dir-btn { font: inherit; font-size: 0.85em; cursor: pointer; background: transparent; color: var(--muted);
+  border: 1px solid transparent; border-radius: 999px; padding: 5px 12px; box-shadow: none; }
+.graph-tab:hover, .graph-dir-btn:hover { color: var(--fg); border-color: var(--chip-line); box-shadow: none; }
+.graph-tab[aria-selected="true"], .graph-dir-btn[aria-pressed="true"] { color: var(--accent); background: var(--card-2);
+  border-color: var(--accent); font-weight: 600; }
+.graph-dir { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.graph-dir > span { margin-right: 4px; }
+.graph-dir-btn { padding: 4px 10px; }
