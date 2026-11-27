@@ -56,7 +56,12 @@ manifest.json                 sources, upstream generated_at / as_of, build time
 <source>/meta.json            ris-routing-data meta for the source
 <source>/v4/<id>.json.gz      one address block, gzip-compressed JSON (the page decompresses it); v6/ likewise
 ../asnames/<asn % 100>.json   backup AS names {"<asn>": "<name>"}, rebuilt every deploy (step skipped if asn.txt fails)
+../aspa/aspas.json            validated ASPAs {"aspas": {"<customer AS>": [provider AS, ...]}, source_time, built, counts}
 ```
+ASPAs (interim, until rpki-aspa-data publishes its own): `pipeline.aspa` downloads Cloudflare's public rpki-client output
+(`rpki.cloudflare.com/rpki.json`, all five RIRs), keeps only the ASPAs (about 4,400 customers, 130 kB) and drops expired
+ones. A provider list of `[0]` means the customer has no providers. If the download fails or looks wrong (bad entries,
+fewer than 2,000 ASPAs), the build reuses the live site's `aspas.json`, which keeps its original `source_time`.
 Blocks: `root` holds IPv4 prefixes shorter than /8 (IPv6: /16). Then one block per IPv4 first octet / IPv6 first
 16 bits. A block with more than 4,000 routes is split by the next `k` bits (fewest bits that bring each child under
 4,000); the parent keeps prefixes shorter than `depth + k`. So every covering prefix of an address sits on the chain
@@ -77,7 +82,8 @@ Every time a person sees is IST (UTC+05:30); JSON timestamps are ISO 8601 with `
 ```bash
 python3 -m pipeline.ris.fetch download --work work/ris
 python3 -m pipeline.asnames download --out work/asn.txt
-python3 -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --out _site
+python3 -m pipeline.aspa download --out work/aspas.json
+python3 -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --aspa work/aspas.json --out _site
 python3 -m http.server 8765 --directory _site      # http://localhost:8765/lookup/
 python3 -m unittest discover -s tests -t .
 node --test tests/js/*.test.mjs
@@ -89,5 +95,5 @@ No dependencies beyond the Python 3.12+ standard library (and Node 22 for the JS
 - Custom domain `aspa-monitor.gauravkansal.in`: DNS `CNAME` record → `aspa-monitor.github.io`, domain set in
   Settings → Pages (with "Enforce HTTPS"). With Actions deployments GitHub ignores a `CNAME` file, so there is none.
 - The domain is hard-coded in: `site/*.html` (`canonical`, `og:url`, JSON-LD `url`), `site/robots.txt`,
-  `site/sitemap.xml`, `LIVE_MANIFEST_URL` in `.github/workflows/pages.yml` and `USER_AGENT` in `pipeline/ris/fetch.py`.
+  `site/sitemap.xml`, `LIVE_MANIFEST_URL` / `LIVE_ASPA_URL` in `.github/workflows/pages.yml` and `USER_AGENT` in `pipeline/ris/fetch.py`.
   Pages and data use root-relative links (`/lookup/`, `/data/...`), so nothing else changes with the domain.

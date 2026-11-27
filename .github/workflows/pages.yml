@@ -21,6 +21,7 @@ concurrency:
 
 env:
   LIVE_MANIFEST_URL: https://aspa-monitor.gauravkansal.in/data/ris/manifest.json
+  LIVE_ASPA_URL: https://aspa-monitor.gauravkansal.in/data/aspa/aspas.json
 
 jobs:
   build:
@@ -62,9 +63,14 @@ jobs:
         continue-on-error: true  # optional: the site still works with RIPEstat names only
         run: python -m pipeline.asnames download --out work/asn.txt
 
+      - name: Download ASPAs (Cloudflare RPKI validator, interim)
+        if: steps.check.outputs.changed == 'true'
+        continue-on-error: true  # optional: the build then reuses the live site's ASPA file
+        run: python -m pipeline.aspa download --out work/aspas.json
+
       - name: Build site
         if: steps.check.outputs.changed == 'true'
-        run: python -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --out _site
+        run: python -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --aspa work/aspas.json --out _site
 
       - uses: actions/upload-pages-artifact@v4
         if: steps.check.outputs.changed == 'true'

@@ -1,6 +1,6 @@
 """Assemble the deployable site: static pages from site/ plus generated data/.
 
-    python -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --out _site
+    python -m pipeline.build_site --ris-work work/ris --asnames work/asn.txt --aspa work/aspas.json --out _site
 """
 import argparse
 import hashlib
@@ -11,7 +11,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from pipeline import asnames
+from pipeline import asnames, aspa
 from pipeline.ris import fetch, shard
 from pipeline.timefmt import now_ist
 
@@ -107,6 +107,9 @@ def main(argv=None) -> int:
     ap.add_argument("--ris-work", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--asnames", type=Path, help="RIPE asn.txt for backup AS names (optional)")
+    ap.add_argument("--aspa", type=Path, help="ASPAs from `pipeline.aspa download` (optional: falls back to the live file)")
+    ap.add_argument("--live-aspa-url", default=os.environ.get("LIVE_ASPA_URL", ""),
+                    help="live site's data/aspa/aspas.json, reused when the fresh ASPA download is unusable")
     ap.add_argument("--budget-mb", type=int, default=DEFAULT_BUDGET_MB)
     ap.add_argument("--live-manifest-url", default=os.environ.get("LIVE_MANIFEST_URL", ""),
                     help="live site's data/ris/manifest.json, to keep each peer's graph colour")
@@ -120,6 +123,7 @@ def main(argv=None) -> int:
     build_ris(args.ris_work, args.out / "data" / "ris", live_colours(args.live_manifest_url))
     if args.asnames:
         asnames.build(args.asnames, args.out / "data" / "asnames")
+    aspa.build(args.aspa, args.out / "data" / "aspa", args.live_aspa_url)
 
     total_mb = dir_bytes(args.out) / 1e6
     print(f"site total: {total_mb:.1f} MB (budget {args.budget_mb} MB, Pages limit {PAGES_LIMIT_MB} MB)")

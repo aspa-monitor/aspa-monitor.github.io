@@ -327,10 +327,9 @@ function drawGraph(entries, width) {
     const isSet = asn.startsWith("{");
     const users = n.users;
     const kind = n.origin ? "origin" : n.peer ? "peer" : "transit";
-    // Tooltip: full registered name (the box shortens it), role, and how many drawn paths pass here.
-    // Which peers they are is left to the lines and chips (tap a chip to highlight one path).
+    // Tooltip: full registered name (the box shortens it) and role. Which paths pass here is left to the
+    // lines and chips (tap a chip to highlight one path).
     const role = n.origin ? "origin" : n.peer ? "peer" : "transit";
-    const onPaths = n.peer ? "" : ` · on ${users.length} of ${entries.length} path${entries.length === 1 ? "" : "s"}`;
     const grp = el("g", { class: `node ${kind}`, transform: `translate(${x},${y})`, "data-users": users.join(" ") }, nodeLayer);
     if (n.rov) el("rect", { x: -4, y: -4, width: bw + 8, height: bh + 8, rx: 13, class: "rov-ring" }, grp);
     el("rect", { width: bw, height: bh, rx: 10, class: "box" }, grp);
@@ -365,14 +364,14 @@ function drawGraph(entries, width) {
     const label = isSet ? fit(`{${asn.slice(1, -1).split(",").map((s) => `AS${s}`).join(", ")}}`, nameMax + 2) : `AS${asn}`;
     el("text", { x: tx, y: 18, class: "num" }, grp).textContent = label;
     const nameEl = el("text", { x: tx, y: 34, class: "name" }, grp);
-    tip.textContent = `${label} · ${role}${onPaths}`;
+    tip.textContent = `${label} · ${role}`;
     if (isSet) {
       nameEl.textContent = "AS_SET (unordered)";
     } else {
       asName(Number(asn)).then(({ name }) => {
         if (!name) return;
         nameEl.textContent = fit(shortName(name), nameMax); // full "HANDLE - Organisation" in the tooltip
-        tip.textContent = `AS${asn} ${name} · ${role}${onPaths}`;
+        tip.textContent = `AS${asn} ${name} · ${role}`;
       });
     }
   }
