@@ -144,7 +144,7 @@ function prefixTable(groups, source, emptyText) {
 // most networks filter routes longer than that, so there is almost never anything to show.
 const MAX_USUAL = { 4: 24, 6: 48 };
 export const wantMoreSpecifics = (q) => !q.isAddress && q.len < MAX_USUAL[q.afi];
-// No covering section at /8 (IPv4) or /12 (IPv6) and shorter: RIS peers carry no routes shorter than that
+// No covering section at /8 (IPv4) or /12 (IPv6) and shorter: collector peers carry no routes shorter than that
 // (checked on the data: the shortest are /8 for IPv4 and /16 for IPv6).
 const MIN_USUAL = { 4: 8, 6: 12 };
 export const wantCovering = (q, match) => (match ? match.len : q.len) > MIN_USUAL[q.afi];
@@ -225,7 +225,7 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
     results.innerHTML = `<p class="error">Unknown source "${esc(sourceName)}".</p>`;
     return;
   }
-  // Leave out peers that send RIS no routes of this address family (e.g. IPv4-only peers).
+  // Leave out peers that send no routes of this address family (e.g. IPv4-only peers).
   const hasFamily = (s) => s[`v${q.afi}`] == null || s[`v${q.afi}`] > 0;
   const sources = picked.filter(hasFamily);
   const skipped = picked.filter((s) => !hasFamily(s));
@@ -237,7 +237,7 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
   results.innerHTML = `${note}<p class="muted">Looking up ${esc(qlabel)}…</p>`;
 
   if (!sources.length) {
-    results.innerHTML = `${note}<p class="notice">${esc(sourceLabel(picked[0]))} sends RIS no IPv${q.afi} routes, ` +
+    results.innerHTML = `${note}<p class="notice">${esc(sourceLabel(picked[0]))} sends no IPv${q.afi} routes, ` +
       `so there is nothing to look up here. Choose another source or All sources.</p>`;
     return;
   }

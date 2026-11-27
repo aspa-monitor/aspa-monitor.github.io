@@ -211,11 +211,17 @@ def shard_source(source: dict, work: Path, out: Path) -> dict:
     }
     total_bytes += _write_json(dest / "index.json", index)
 
+    archive = source.get("archive")
     meta = source.get("meta")
     if meta and (work / meta).exists():
         data = (work / meta).read_bytes()
         (dest / "meta.json").write_bytes(data)
         total_bytes += len(data)
+        if archive is None:
+            try:
+                archive = json.loads(data).get("archive")
+            except (ValueError, AttributeError):
+                pass
 
     return {
         "name": name,
@@ -224,6 +230,8 @@ def shard_source(source: dict, work: Path, out: Path) -> dict:
         # Optional, from ris-routing-data's sources config; the page falls back to "rrc00 · peer AS7018".
         "display_name": source.get("display_name"),
         "collector_location": source.get("collector_location"),
+        # "ris" or "routeviews" (optional; from the manifest source, else its meta.json).
+        "archive": archive,
         "as_of": source["as_of"],
         "routes": index["counts"]["routes"],
         "v4": index["counts"]["v4"],

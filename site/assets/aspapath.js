@@ -1,7 +1,7 @@
 // ASPA path verification (draft-ietf-sidrops-aspa-verification), run in the browser on the site's own copy
 // of the validated ASPAs (/data/aspa/aspas.json, from pipeline/aspa.py). Pure functions apart from loadAspas().
 //
-// RIS collectors receive every peer's full table, so each path is checked as a route received from a provider
+// Route collectors (RIS, RouteViews) receive every peer's full table, so each path is checked as a route received from a provider
 // (the draft's "downstream" procedure, the same view BGPKIT and Cloudflare Radar take for collector data):
 // from the origin the path may climb through authorised providers, then descend through authorised providers
 // to the peer. Prepends are collapsed first; a path with an AS_SET is Invalid.

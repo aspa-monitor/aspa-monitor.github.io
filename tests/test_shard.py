@@ -71,6 +71,27 @@ class PlanBlocksTest(unittest.TestCase):
 
 
 class ShardSourceTest(unittest.TestCase):
+    def test_routeviews_source(self):
+        # RouteViews collector names contain dots and a hyphen; "archive" comes from meta.json.
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            work.mkdir()
+            write_gz(work / "r.tsv.gz", ROUTES_HEADER +
+                     "4\t1.0.0.0/24\t206.126.236.1\t6939\tp1\t13335\t\t\t\t\t\t1795507729\n")
+            write_gz(work / "p.tsv.gz", PATHS_HEADER + "p1\t6939 13335\t6939 13335\t2\t13335\t\t\t1\t1\n")
+            (work / "m.json").write_text('{"archive": "routeviews"}')
+            name = "route-views.eqix_AS6939"
+            src = {"name": name, "collector": "route-views.eqix", "peer_asn": 6939,
+                   "as_of": "2026-11-27T16:30:00+05:30", "meta": "m.json",
+                   "display_name": "Hurricane Electric", "collector_location": "Ashburn (Equinix)",
+                   "files": {"routes": {"asset": "r.tsv.gz"}, "paths": {"asset": "p.tsv.gz"}}}
+            summary = shard.shard_source(src, work, out)
+            self.assertEqual(summary["name"], name)
+            self.assertEqual(summary["archive"], "routeviews")
+            self.assertEqual(summary["routes"], 1)
+            self.assertTrue((out / name / "index.json").exists())
+            self.assertTrue((out / name / "meta.json").exists())
+
     def test_end_to_end(self):
         with tempfile.TemporaryDirectory() as tmp:
             work, out = Path(tmp) / "work", Path(tmp) / "out"
