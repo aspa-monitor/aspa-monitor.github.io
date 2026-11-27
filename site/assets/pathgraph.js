@@ -123,7 +123,7 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 /**
  * Build the graph block (a <figure>) for the lookup page, or null when there is nothing to draw.
  * peerEntries: one per distinct path per peer, in manifest order:
- *   [{label, name (display name or null), source, prefix, path, slot}].
+ *   [{label, name (display name or null), source, prefix, path, slot, aspa (path verdict or null), split}].
  * Peers with the same path after their own AS are merged (fresh for this search); more than MAX_GROUPS
  * groups are cut to the MAX_GROUPS that show the most ASes, with a button to redraw all of them.
  */
@@ -148,9 +148,17 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
   const counts = `${plural(peerCount, "peer")}, ${plural(allGroups.length, "distinct path")}` +
     (cut ? ` (the ${groups.length} covering the most ASes shown)` : "");
   const merged = entries.some((e) => e.members.length > 1);
+  // ASPA path verdicts (from lookup.js; members of a group always share one, see entry.split).
+  const verdictOf = (gr) => peerEntries[gr.members[0]].aspa;
+  const tally = { valid: 0, invalid: 0, unknown: 0 };
+  for (const gr of allGroups) if (verdictOf(gr) in tally) tally[verdictOf(gr)]++;
+  const aspaLine = allGroups.some((gr) => verdictOf(gr) in tally)
+    ? ` ASPA: ${tally.valid} valid, ${tally.invalid} invalid, ${tally.unknown} unknown.` : "";
+  const VTONE = { valid: "valid", invalid: "invalid", unknown: "none" };
+  const vtag = (v) => (v in VTONE ? ` <span class="vtag ${VTONE[v]}" title="ASPA path verdict">ASPA ${v}</span>` : "");
   fig.innerHTML = `<figcaption>
       <strong>AS path graph</strong>
-      <span class="graph-counts">${esc(counts)} to ${prefixes.map(esc).join(", ")}.</span>
+      <span class="graph-counts">${esc(counts)} to ${prefixes.map(esc).join(", ")}.${esc(aspaLine)}</span>
       <span class="muted small">Each path has its own colour; lines run side by side where paths share an AS.
         ${merged ? "Peers with the same path after their own AS share one box and one line (the first peer's colour). " : ""}Point at or tap a peer to highlight its path.</span>
     </figcaption>
@@ -159,7 +167,7 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
     <div class="graph-peers">${entries.map((e, i) =>
       `<button type="button" class="peer-chip" data-i="${i}">${e.members.map((m) =>
         `<i class="swatch${peerDashed(m.slot) ? " dashed" : ""}" style="--sw:${peerColour(m.slot)}"></i>`).join("")}` +
-      `${esc(e.label)}${prefixes.length > 1 ? ` <span class="muted">(${esc(e.prefix)})</span>` : ""}</button>`).join("")}</div>
+      `${esc(e.label)}${prefixes.length > 1 ? ` <span class="muted">(${esc(e.prefix)})</span>` : ""}${vtag(e.members[0].aspa)}</button>`).join("")}</div>
     ${allGroups.length > MAX_GROUPS ? `<p class="graph-more"><button type="button" class="graph-toggle">${showAll
       ? `Show the ${MAX_GROUPS} main paths` : `Show all ${allGroups.length} paths`}</button></p>` : ""}
     <div class="graph-legend small muted">

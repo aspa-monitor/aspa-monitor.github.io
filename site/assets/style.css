@@ -270,6 +270,19 @@ h1.hero {
 .pathgraph .rov-pill.invalid { --c: var(--v-invalid); }
 .pathgraph .rov-pill rect { fill: color-mix(in srgb, var(--c) 14%, var(--card)); stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-width: 1; }
 .pathgraph .rov-pill text { font-size: 10.5px; font-weight: 700; fill: var(--c); }
+.peer-chip .vtag { --c: var(--muted); font-size: 0.86em; font-weight: 700; margin-left: 6px; padding: 0 7px; border-radius: 999px;
+  color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+.peer-chip .vtag.valid { --c: var(--v-valid); }
+.peer-chip .vtag.invalid { --c: var(--v-invalid); }
+/* ASPA row in route cards: pair-by-pair details */
+.aspa-pairs { margin-top: 6px; }
+.aspa-pairs summary { cursor: pointer; color: var(--accent); font-size: 0.9em; }
+.aspa-pairs ul { list-style: none; margin: 6px 0 0; padding: 0; font-size: 0.92em; }
+.aspa-pairs li { margin: 3px 0; }
+.aspa-pairs .mark { display: inline-block; width: 1.4em; font-weight: 800; color: var(--muted); }
+.aspa-pairs li.ok .mark { color: var(--v-valid); }
+.aspa-pairs li.bad { color: var(--v-invalid); }
+.aspa-pairs li.bad .mark { color: var(--v-invalid); }
 .graph-peers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .peer-chip {
   font: inherit; font-size: 0.82em; cursor: pointer; color: var(--fg);

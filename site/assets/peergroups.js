@@ -13,7 +13,7 @@ export function hops(path) {
 }
 
 /**
- * entries: [{prefix, path, ...}] in manifest order (one per distinct path per peer).
+ * entries: [{prefix, path, split?, ...}] in manifest order (one per distinct path per peer).
  * Returns groups in order of their first member: [{members: [entry index], peers: [peer AS, unique],
  * tail: [hops after the peer], prefix, path (the first member's)}].
  * A peer that originates the prefix itself (nothing left after its own AS) is never merged.
@@ -25,7 +25,9 @@ export function groupPeers(entries) {
     const h = hops(e.path);
     if (!h.length) return;
     const tail = h.slice(1);
-    const key = tail.length ? `${e.prefix}|${tail.join(" ")}` : `${e.prefix}|self:${h[0]}`;
+    // e.split (e.g. the ASPA verdict) keeps peers apart even when their tails match: the first pair differs.
+    const key = (tail.length ? `${e.prefix}|${tail.join(" ")}` : `${e.prefix}|self:${h[0]}`) +
+      (e.split != null ? `|${e.split}` : "");
     let g = byKey.get(key);
     if (!g) {
       g = { members: [], peers: [], tail, prefix: e.prefix, path: e.path };

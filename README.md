@@ -24,7 +24,13 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   "Show all" button; the per-peer route sections below always list every peer. Graph boxes show the organisation
   part of an AS name ("AT&T Enterprises, LLC" from "ATT-INTERNET4 - AT&T Enterprises, LLC"; full name in the tooltip),
   and the origin box carries the same RPKI ROV verdict as the route cards, outlined green (valid), red (invalid) or
-  grey (not found). AS numbers are plain chips, not links. Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
+  grey (not found). AS numbers are plain chips, not links.
+  Each route also gets an **ASPA** verdict (valid / invalid / unknown, with the reason and a pair-by-pair breakdown),
+  worked out in the browser from the site's own ASPA copy (`site/assets/aspapath.js`, draft-ietf-sidrops-aspa-verification).
+  RIS collectors get every peer's full table, so paths are checked as routes received from a provider (the draft's
+  downstream procedure, as BGPKIT and Cloudflare Radar do for collector data). Verdicts and ramp lengths were checked
+  against Cloudflare Radar's ASPA validator on sample paths. The graph's peer chips carry the verdict and the caption
+  counts them; peers whose verdicts differ are never merged into one box. Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
   AS names are fetched live in the browser from the RIPEstat `as-overview` API (8 s timeout), cached in `localStorage`
   for 7 days. If RIPEstat fails or has no name, the page uses the site's own copy of RIPE NCC's
   [asn.txt](https://ftp.ripe.net/ripe/asnames/asn.txt) (all RIRs), shown in italics and cached for 1 day.

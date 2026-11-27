@@ -5,6 +5,8 @@ import { fillNames } from "./asnames.js";
 import { formatIST, formatUnixIST, ago } from "./timefmt.js";
 import { renderPathGraph } from "./pathgraph.js";
 import { rovSlot, fillRov } from "./rov.js";
+import { loadAspas, verifyPath, VERDICT_LABEL } from "./aspapath.js";
+import { hops } from "./peergroups.js";
 
 const MAX_LIST_ROWS = 200;
 const STALE_HOURS = 3;
@@ -65,7 +67,32 @@ function communitiesHtml(text) {
   return list.map((c) => `<code class="community">${esc(c)}</code>`).join(" ");
 }
 
-function routeCard(r) {
+// ---------- ASPA (path verdict from the site's own ASPA copy, see aspapath.js) ----------
+
+const VERDICT_TONE = { valid: "valid", invalid: "invalid", unknown: "none" };
+const MARK = { ok: "✓", bad: "✗", none: "·" };
+const RADAR = "https://radar.cloudflare.com/routing/aspa-validation?path=";
+
+/** The ASPA result for a route, worked out once and kept on the route (route card and graph share it). */
+function aspaOf(r, aspa) {
+  if (!aspa || aspa.error || !r.path) return null;
+  if (!r.aspaResult) r.aspaResult = verifyPath(aspa.map, hops(r.path));
+  return r.aspaResult;
+}
+
+function aspaHtml(r, aspa) {
+  if (aspa?.error) return `<span class="muted">could not load the ASPA data (${esc(aspa.error)})</span>`;
+  const res = aspaOf(r, aspa);
+  if (!res) return '<span class="muted">no path to check</span>';
+  const when = aspa.sourceTime ? `ASPAs of ${esc(formatIST(new Date(aspa.sourceTime)))}, ` : "";
+  const pairs = res.pairs.length ? `<details class="aspa-pairs"><summary>Pair by pair</summary><ul>${res.pairs.map((p) =>
+    `<li class="${p.mark}"><span class="mark" aria-hidden="true">${MARK[p.mark]}</span>${esc(p.text)}</li>`).join("")}</ul>` +
+    `<p class="small"><a href="${RADAR}${esc(hops(r.path).join("-"))}" target="_blank" rel="noopener">Cross-check on Cloudflare Radar</a></p></details>` : "";
+  return `<span class="rov ${VERDICT_TONE[res.verdict]}">${VERDICT_LABEL[res.verdict]}</span> ${esc(res.reason)} ` +
+    `<span class="muted small">(${when}Cloudflare RPKI validator; checked as a route received from a provider)</span>${pairs}`;
+}
+
+function routeCard(r, aspa) {
   const rows = [
     ["AS path", `<div class="path">${pathHtml(r.path)}</div>`],
   ];
@@ -78,6 +105,7 @@ function routeCard(r) {
     ["Origin AS", r.origin != null ? `${asChip(r.origin)}`
       : '<span class="muted">unknown (path ends in an AS_SET)</span>'],
     ["RPKI ROV", rovSlot(r.prefix, r.origin)],
+    ["ASPA", aspaHtml(r, aspa)],
     ["Path length", `${esc(r.length ?? "—")} <span class="muted">(prepends collapsed, an AS_SET counts as 1)</span>`],
     ["Last change", timeHtml(r.timestamp)],
     ["Communities", communitiesHtml(r.communities)],
@@ -119,7 +147,7 @@ export const wantMoreSpecifics = (q) => !q.isAddress && q.len < MAX_USUAL[q.afi]
 const MIN_USUAL = { 4: 8, 6: 12 };
 export const wantCovering = (q, match) => (match ? match.len : q.len) > MIN_USUAL[q.afi];
 
-function renderSource(res, q, src, multi) {
+function renderSource(res, q, src, multi, aspa) {
   const { match, exact, covering, moreSpecifics, unloaded, moreBase } = res;
   const asOf = new Date(src.as_of);
   let head;
@@ -134,7 +162,7 @@ function renderSource(res, q, src, multi) {
   }
   const matchHtml = match ? `
     <div class="prefix-head"><h3>${esc(match.prefix)}</h3></div>
-    ${match.routes.map(routeCard).join("")}` : "";
+    ${match.routes.map((r) => routeCard(r, aspa)).join("")}` : "";
 
   let unloadedHtml = "";
   if (unloaded.blocks) {
@@ -213,11 +241,13 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
     ? `<p class="muted small">Not shown (no IPv${q.afi} routes from these peers): ${skipped.map((s) => esc(sourceLabel(s))).join(", ")}.</p>` : "";
 
   const multi = sources.length > 1;
+  const aspaP = loadAspas().catch((e) => ({ error: e.message })); // one small file, fetched once per page
   const done = await Promise.all(sources.map(async (src) => {
     try {
       const res = await lookup(src.name, q, {
         loadAll: loadAllFor === src.name || loadAllFor === "all", withMoreSpecifics: wantMoreSpecifics(q) });
-      return { src, res, html: renderSource(res, q, src, multi) };
+      const aspa = await aspaP;
+      return { src, res, html: renderSource(res, q, src, multi, aspa) };
     } catch (e) {
       return { src, html: `<section class="source-result">${multi ? `<h2>${esc(sourceLabel(src))}</h2>` : ""}<p class="error">Could not load data: ${esc(e.message)}</p></section>` };
     }
@@ -229,6 +259,7 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
 
   // One graph of every peer's path to the matched prefix (each distinct path per source counts once);
   // the graph merges peers whose paths match after their own AS.
+  const aspa = await aspaP;
   const entries = [];
   for (const { src, res } of done) {
     if (!res || !res.match) continue;
@@ -236,7 +267,10 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
     for (const r of res.match.routes) {
       if (!r.path || seen.has(r.path)) continue;
       seen.add(r.path);
+      const verdict = aspaOf(r, aspa)?.verdict ?? null;
+      // split: peers whose ASPA verdicts differ are never merged into one box (their first pair differs).
       entries.push({ label: sourceLabel(src), name: src.display_name || null, source: src.name, prefix: res.match.prefix, path: r.path,
+        aspa: verdict, split: verdict,
         slot: Number.isInteger(src.colour) ? src.colour : manifest.sources.indexOf(src) });
     }
   }
