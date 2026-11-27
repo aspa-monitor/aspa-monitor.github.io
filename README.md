@@ -18,7 +18,10 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   (`site/assets/rov.js`, daily RPKI snapshot); for an invalid route the covering ROAs say why (wrong origin or too
   specific for maxLength). Interim, until rpki-aspa-data publishes ROAs.
   An AS path graph merges every peer's path to the matched prefix (`site/assets/pathgraph.js`); peers that send RIS
-  no routes of the queried family (e.g. IPv4-only peers) are left out. Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
+  no routes of the queried family (e.g. IPv4-only peers) are left out. Peers whose paths are the same after their own
+  AS share one box and one set of lines (the first peer's colour), worked out fresh for every search
+  (`site/assets/peergroups.js`). With more than 6 distinct paths the graph shows the 6 that add the most ASes, with a
+  "Show all" button; the per-peer route sections below always list every peer. Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
   AS names are fetched live in the browser from the RIPEstat `as-overview` API (8 s timeout), cached in `localStorage`
   for 7 days. If RIPEstat fails or has no name, the page uses the site's own copy of RIPE NCC's
   [asn.txt](https://ftp.ripe.net/ripe/asnames/asn.txt) (all RIRs), shown in italics and cached for 1 day.

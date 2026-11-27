@@ -227,7 +227,8 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
   fillNames(results);
   fillRov(results);
 
-  // One graph of every peer's path to the matched prefix (each distinct path per source counts once).
+  // One graph of every peer's path to the matched prefix (each distinct path per source counts once);
+  // the graph merges peers whose paths match after their own AS.
   const entries = [];
   for (const { src, res } of done) {
     if (!res || !res.match) continue;
@@ -235,7 +236,7 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
     for (const r of res.match.routes) {
       if (!r.path || seen.has(r.path)) continue;
       seen.add(r.path);
-      entries.push({ label: sourceLabel(src), prefix: res.match.prefix, path: r.path,
+      entries.push({ label: sourceLabel(src), name: src.display_name || null, source: src.name, prefix: res.match.prefix, path: r.path,
         slot: Number.isInteger(src.colour) ? src.colour : manifest.sources.indexOf(src) });
     }
   }
