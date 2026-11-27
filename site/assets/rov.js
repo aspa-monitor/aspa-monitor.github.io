@@ -30,9 +30,9 @@ export function rovView(result, asn, roas = []) {
   return { tone: "none", label: result || "?", text: "Unexpected answer from BGPKIT." };
 }
 
-// One request per (prefix, origin), shared by every route card and source on the page.
+// One request per (prefix, origin), shared by every route card, source and the path graph on the page.
 const pending = new Map();
-function check(prefix, asn) {
+export function checkRov(prefix, asn) {
   const key = `${prefix} ${asn}`;
   if (!pending.has(key)) {
     pending.set(key, (async () => {
@@ -52,10 +52,12 @@ export function rovSlot(prefix, origin) {
   return `<span class="rov-slot" data-prefix="${esc(prefix)}" data-asn="${esc(origin)}"><span class="muted">checking…</span></span>`;
 }
 
+export const rovDate = fmtDate;
+
 export function fillRov(root) {
   for (const el of root.querySelectorAll(".rov-slot")) {
     const asn = Number(el.dataset.asn);
-    check(el.dataset.prefix, asn).then(({ view, date }) => {
+    checkRov(el.dataset.prefix, asn).then(({ view, date }) => {
       el.innerHTML = `<span class="rov ${view.tone}">${esc(view.label)}</span> ${esc(view.text)} ` +
         `<span class="muted small">(RPKI data of ${esc(fmtDate(date))}, via <a href="https://bgpkit.com/api">BGPKIT</a>)</span>`;
     }, (e) => {

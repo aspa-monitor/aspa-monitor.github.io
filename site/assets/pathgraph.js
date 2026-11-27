@@ -4,7 +4,8 @@
 // their lines run side by side. Pointing at (or tapping) a peer chip or box highlights that one path.
 // Peers whose paths are identical after their own AS are merged into one box and one set of lines for this
 // search (peergroups.js); at most MAX_GROUPS are drawn until the reader asks for all of them.
-import { asName } from "./asnames.js";
+import { asName, shortName } from "./asnames.js";
+import { checkRov, rovDate } from "./rov.js";
 import { hops, groupPeers, pickGroups, packLines } from "./peergroups.js";
 
 export { hops };
@@ -18,6 +19,7 @@ const SLOTS = 16;
 export const peerColour = (slot) => (slot != null && slot < SLOTS ? `var(--peer-${(slot % HUES) + 1})` : "var(--muted)");
 export const peerDashed = (slot) => slot != null && slot >= HUES && slot < SLOTS;
 const DASH = "7 4";
+const ROV_LINE = 17; // extra height of an origin box for its ROV badge
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 /**
@@ -161,7 +163,7 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
     ${allGroups.length > MAX_GROUPS ? `<p class="graph-more"><button type="button" class="graph-toggle">${showAll
       ? `Show the ${MAX_GROUPS} main paths` : `Show all ${allGroups.length} paths`}</button></p>` : ""}
     <div class="graph-legend small muted">
-      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span>
+      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS, with its RPKI ROV verdict</span>
     </div>`;
   fig.querySelector(".graph-scroll").appendChild(svg);
   fig.querySelector(".graph-toggle")?.addEventListener("click", () => {
@@ -202,6 +204,33 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
   return fig;
 }
 
+const ROV_TEXT = { valid: "ROV valid", invalid: "ROV invalid", none: "ROV not found" };
+
+/**
+ * RPKI ROV pill in an origin box at (x, y): the same verdict and request as the route cards (rov.js).
+ * If the origin announces several matched prefixes with different verdicts, the pill says "mixed".
+ */
+function rovBadge(grp, x, y, asn, prefixes) {
+  const pill = el("g", { class: "rov-pill pending", transform: `translate(${x},${y})` }, grp);
+  const rect = el("rect", { width: 70, height: 15, rx: 7.5 }, pill);
+  const text = el("text", { x: 7, y: 11 }, pill);
+  const tip = el("title", {}, pill);
+  const set = (label, tone, tipText) => {
+    text.textContent = label;
+    pill.setAttribute("class", `rov-pill ${tone}`);
+    rect.setAttribute("width", String(Math.ceil(label.length * 5.7 + 14)));
+    tip.textContent = tipText;
+  };
+  set("ROV …", "pending", "Checking RPKI ROV…");
+  Promise.all(prefixes.map((p) => checkRov(p, asn).then((r) => ({ p, ...r })))).then((rs) => {
+    const tones = new Set(rs.map((r) => r.view.tone));
+    const detail = rs.map((r) => `${r.p} from AS${asn}: ${r.view.label}. ${r.view.text}`).join("\n");
+    const when = `RPKI data of ${rovDate(rs[0].date)}, via BGPKIT`;
+    if (tones.size === 1) set(ROV_TEXT[rs[0].view.tone] || `ROV ${rs[0].view.label}`, rs[0].view.tone, `${detail}\n${when}`);
+    else set("ROV mixed", "none", `${detail}\n${when}`);
+  }, (e) => set("ROV ?", "none", `Could not check RPKI ROV: BGPKIT did not answer (${e.message})`));
+}
+
 /** The SVG for drawn entries [{label, prefix, path, peers, members, slot}]. */
 function drawGraph(entries, width) {
   const { nodes, edges, layers } = layout(entries);
@@ -227,6 +256,9 @@ function drawGraph(entries, width) {
     const group = n.peer && (n.peers.length > 1 || entries[n.users[0]].members.length > 1);
     n.numLines = group ? packLines(n.peers.map((a) => `AS${a}`), numMax) : null;
     n.h = group ? 18 + 15 * (n.numLines.length - 1) + 16 + 10 : g.nodeH; // single box: 18 + 16 + 10 = 44
+    // The origin box gets a third line: the RPKI ROV verdict for (prefix, origin).
+    n.rov = n.origin && /^\d+$/.test(n.asn);
+    if (n.rov) n.h += ROV_LINE;
   }
   // Horizontal: boxes are nodeW wide and as tall as their text. Vertical: every box in a row has the row's height.
   const rowH = layers.map((l) => Math.max(g.nodeH, ...l.filter((n) => !n.dummy).map((n) => n.h)));
@@ -316,13 +348,14 @@ function drawGraph(entries, width) {
       tip.textContent = `${asList} (peer ASes with the same path); ${usedBy()}`;
       Promise.all(n.peers.map(async (p) => {
         const named = members.find((mb) => mb.name && hops(mb.path)[0] === p);
-        return named ? named.name : (await asName(Number(p))).name || `AS${p}`;
+        return named ? named.name : shortName((await asName(Number(p))).name) || `AS${p}`;
       })).then((names) => {
         nameEl.textContent = fit(names.join(" + "), nameMax);
         tip.textContent = `${asList}: ${names.join(" + ")} (peer ASes with the same path); ${usedBy()}`;
       });
       continue;
     }
+    if (n.rov) rovBadge(grp, tx, bh - ROV_LINE - 4, Number(asn), [...new Set(users.map((i) => entries[i].prefix))]);
     const label = isSet ? fit(`{${asn.slice(1, -1).split(",").map((s) => `AS${s}`).join(", ")}}`, nameMax + 2) : `AS${asn}`;
     el("text", { x: tx, y: 18, class: "num" }, grp).textContent = label;
     const nameEl = el("text", { x: tx, y: 34, class: "name" }, grp);
@@ -332,7 +365,7 @@ function drawGraph(entries, width) {
     } else {
       asName(Number(asn)).then(({ name }) => {
         if (!name) return;
-        nameEl.textContent = fit(name, nameMax);
+        nameEl.textContent = fit(shortName(name), nameMax); // full "HANDLE - Organisation" in the tooltip
         tip.textContent = `AS${asn} ${name} (${role}); ${usedBy()}`;
       });
     }

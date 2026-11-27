@@ -259,6 +259,11 @@ h1.hero {
 .pathgraph.focus .edge:not(.on) { opacity: 0.1; }
 .pathgraph.focus .node:not(.on) { opacity: 0.3; }
 .pathgraph.focus .edge.on { opacity: 1; stroke-width: 3.2; }
+.pathgraph .rov-pill { --c: var(--muted); }
+.pathgraph .rov-pill.valid { --c: var(--v-valid); }
+.pathgraph .rov-pill.invalid { --c: var(--v-invalid); }
+.pathgraph .rov-pill rect { fill: color-mix(in srgb, var(--c) 14%, var(--card)); stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-width: 1; }
+.pathgraph .rov-pill text { font-size: 9.5px; font-weight: 700; fill: var(--c); }
 .graph-peers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .peer-chip {
   font: inherit; font-size: 0.82em; cursor: pointer; color: var(--fg);
@@ -272,7 +277,8 @@ h1.hero {
 .graph-toggle:hover { border-color: var(--accent); box-shadow: none; }
 .pathgraph .stripe { stroke-width: 4; stroke-linecap: round; }
 .peer-chip:hover, .peer-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-.graph-legend { display: flex; gap: 14px; margin-top: 10px; }
+.graph-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; }
+.graph-legend span { white-space: nowrap; }
 .graph-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1.5px solid; }
 .graph-legend .dot.peer { border-color: var(--accent-2); background: var(--card); }
 .graph-legend .dot.transit { border-color: var(--chip-line); background: var(--chip); }

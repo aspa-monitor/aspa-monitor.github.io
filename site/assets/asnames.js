@@ -13,6 +13,18 @@ const TTL = { ripestat: 7 * DAY_MS, backup: DAY_MS, none: DAY_MS };
 const TIMEOUT_MS = 8000;
 const MAX_PARALLEL = 6;
 
+/**
+ * The clearer half of a registered AS name, for tight spaces like graph boxes: "HANDLE - Organisation" becomes
+ * "Organisation", and the backup list's trailing country code (", US") goes. Names in the older form without
+ * " - " (e.g. "ASGARR Consortium GARR") stay as they are: guessing where the handle ends would cut real names.
+ */
+export function shortName(name) {
+  let s = String(name || "").trim();
+  const i = s.indexOf(" - ");
+  if (i > 0 && s.slice(i + 3).trim()) s = s.slice(i + 3).trim();
+  return s.replace(/,\s*[A-Z]{2}$/, "").trim() || String(name || "");
+}
+
 export const SOURCE_LABEL = { ripestat: "RIPEstat", backup: "RIPE NCC AS names list (backup)" };
 
 const pending = new Map(); // asn -> Promise<{name, source}>
