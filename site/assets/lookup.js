@@ -1,5 +1,5 @@
 import { parseQuery, formatPrefix } from "./prefix.js";
-import { loadManifest, lookup, MAX_LOAD_FILES, sourceLabel, collectorLabel } from "./risdata.js";
+import { loadManifest, lookup, MAX_LOAD_FILES, sourceLabel, collectorLabel, siteLabel } from "./risdata.js";
 import { FLAG_INFO, splitList } from "./flags.js";
 import { fillNames } from "./asnames.js";
 import { formatIST, formatUnixIST, ago } from "./timefmt.js";
@@ -202,7 +202,9 @@ function fillSources() {
   for (const s of manifest.sources) {
     const k = collectorLabel(s);
     if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(`<option value="${esc(s.name)}">${esc(sourceLabel(s))}</option>`);
+    const where = siteLabel(s);
+    const text = where ? `${sourceLabel(s)} · ${where}` : sourceLabel(s);
+    groups.get(k).push(`<option value="${esc(s.name)}">${esc(text)}</option>`);
   }
   select.innerHTML = '<option value="all">All sources</option>' +
     [...groups].map(([k, opts]) => `<optgroup label="${esc(k)}">${opts.join("")}</optgroup>`).join("");

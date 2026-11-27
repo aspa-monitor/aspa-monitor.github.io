@@ -59,6 +59,13 @@ export function collectorLabel(src) {
   return where ? `${src.collector} · ${where}` : src.collector;
 }
 
+/** Short "where" for one peer line: the exchange in parentheses ("AMS-IX / NL-IX", "multihop"), else the city. */
+export function siteLabel(src) {
+  const where = src.collector_location || RIS_LOCATION[src.collector] || "";
+  const m = where.match(/\(([^)]+)\)/);
+  return m ? m[1].trim() : where;
+}
+
 export const loadManifest = () => getJSON(`${DATA_ROOT}manifest.json`);
 export const loadIndex = (source) => getJSON(`${DATA_ROOT}${source}/index.json`);
 
