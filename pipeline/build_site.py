@@ -44,7 +44,7 @@ def stamp_assets(out: Path) -> str:
     return v
 
 
-PEER_COLOURS = 16  # 8 hues (style.css --peer-1 .. --peer-8), solid for slots 0-7 and dashed for 8-15
+PEER_COLOURS = 16  # style.css --peer-1 .. --peer-16, all solid
 
 
 def assign_colours(names: list, previous: dict) -> dict:

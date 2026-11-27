@@ -14,13 +14,9 @@ export { hops };
 export const MAX_GROUPS = 6;
 
 const SVG = "http://www.w3.org/2000/svg";
-// 8 hues (style.css --peer-1 .. --peer-8). Slots 0-7 draw solid lines, 8-15 the same hues dashed, so each peer
-// keeps a distinct look without inventing extra colours; slots beyond 15 share a neutral grey.
-const HUES = 8;
+// 16 colours (style.css --peer-1 .. --peer-16), all solid lines; slots beyond 15 share a neutral grey.
 const SLOTS = 16;
-export const peerColour = (slot) => (slot != null && slot < SLOTS ? `var(--peer-${(slot % HUES) + 1})` : "var(--muted)");
-export const peerDashed = (slot) => slot != null && slot >= HUES && slot < SLOTS;
-const DASH = "7 4";
+export const peerColour = (slot) => (slot != null && slot < SLOTS ? `var(--peer-${slot + 1})` : "var(--muted)");
 const ROV_LINE = 17; // extra height of an origin box for its ROV badge
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -137,7 +133,7 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false, var
   if (!peerEntries.length) return null;
   const allGroups = groupPeers(peerEntries);
   const groups = showAll ? allGroups : pickGroups(allGroups, MAX_GROUPS);
-  // One drawn entry per group: the first member's path, colour and dash style.
+  // One drawn entry per group: the first member's path and colour.
   const entries = groups.map((gr) => {
     const members = gr.members.map((i) => peerEntries[i]);
     return { prefix: gr.prefix, path: gr.path, peers: gr.peers, members, slot: members[0].slot,
@@ -176,14 +172,14 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false, var
     <div class="graph-scroll"></div>
     <div class="graph-peers">${entries.map((e, i) =>
       `<button type="button" class="peer-chip" data-i="${i}">${e.members.map((m) =>
-        `<i class="swatch${peerDashed(m.slot) ? " dashed" : ""}" style="--sw:${peerColour(m.slot)}"></i>`).join("")}` +
+        `<i class="swatch" style="--sw:${peerColour(m.slot)}"></i>`).join("")}` +
       `${esc(e.label)}${prefixes.length > 1 ? ` <span class="muted">(${esc(e.prefix)})</span>` : ""}${vtag(e.members[0].aspa)}</button>`).join("")}</div>
     ${allGroups.length > MAX_GROUPS ? `<p class="graph-more"><button type="button" class="graph-toggle">${showAll
       ? `Show the ${MAX_GROUPS} main paths` : `Show all ${allGroups.length} paths`}</button></p>` : ""}
     <div class="graph-legend small muted">${rel ? Object.entries(REL).map(([k, r]) =>
       `<span><b class="relkey ${k}">${r.glyph}</b>${esc(r.name)}</span>`).join("") +
       '<span><b class="relkey flag">!</b>disagrees with ASPA</span></div>' : `
-      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>${hasMarks ? '<span><b class="pm bad">✗</b>pair that breaks ASPA</span><span><b class="pm ok">✓</b>authorised pair (on the highlighted path)</span>' : ""}
+      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>${hasMarks ? '<span><b class="pm bad">✗</b>pair that breaks ASPA</span><span><b class="pm ok">✓</b>authorised pair</span>' : ""}
     </div>`}`;
   fig.querySelector(".graph-scroll").appendChild(svg);
   fig.querySelector(".graph-toggle")?.addEventListener("click", () => {
@@ -412,7 +408,7 @@ function drawGraph(entries, width, variant = "paths") {
       }
       const slot = entries[u].slot;
       const p = el("path", { d, class: "edge", "data-users": String(u),
-        style: `stroke:${peerColour(slot)}` + (peerDashed(slot) ? `;stroke-dasharray:${DASH}` : "") }, edgeLayer);
+        style: `stroke:${peerColour(slot)}` }, edgeLayer);
       el("title", {}, p).textContent = `${entries[u].label}: AS${asnOf.get(e.from)} → AS${asnOf.get(e.to)}`;
     });
     // ASPA mark for this pair, in the gap between the two boxes (middle segment of the line's route).
@@ -451,7 +447,7 @@ function drawGraph(entries, width, variant = "paths") {
       const top = 9, len = (bh - 18) / members.length;
       members.forEach((mb, k) => {
         el("line", { x1: 6, x2: 6, y1: top + k * len + (k ? 1.5 : 0), y2: top + (k + 1) * len - (k < members.length - 1 ? 1.5 : 0),
-          class: "stripe", style: `stroke:${peerColour(mb.slot)}` + (peerDashed(mb.slot) ? ";stroke-dasharray:4 3" : "") }, grp);
+          class: "stripe", style: `stroke:${peerColour(mb.slot)}` }, grp);
       });
     }
     const tx = n.peer ? 14 : 10;

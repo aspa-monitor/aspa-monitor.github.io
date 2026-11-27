@@ -286,6 +286,9 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
   if (graph && SHOW_REL_MAP) graph.after(renderPathGraph(entries, { width: gw, variant: "rel" }));
 }
 
+// Looked up when "Look up" is pressed with an empty box.
+const DEFAULT_QUERY = "2409::/28";
+
 function current() {
   const p = new URLSearchParams(location.search);
   return { q: p.get("q") || "", source: p.get("source") || select.value };
@@ -304,7 +307,7 @@ function go(q, source, push = true) {
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
-  go(input.value.trim(), select.value);
+  go(input.value.trim() || DEFAULT_QUERY, select.value);
 });
 
 results.addEventListener("click", (e) => {

@@ -19,7 +19,7 @@ class TestColours(unittest.TestCase):
         self.assertEqual(got["a"], 1)
         self.assertEqual(sorted(got.values()), [0, 1, 2])
 
-    def test_ninth_peer_gets_dashed_slot(self):
+    def test_ninth_peer_gets_slot_8(self):
         got = assign_colours([f"s{i}" for i in range(9)], {})
         self.assertEqual(got["s8"], 8)
 

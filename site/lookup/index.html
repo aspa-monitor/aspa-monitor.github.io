@@ -34,7 +34,7 @@
     <form id="lookup-form" class="lookup" autocomplete="off">
       <label class="field grow">
         <span>Prefix or IP address</span>
-        <input id="q" name="q" type="text" spellcheck="false" placeholder="1.10.10.0/24 or 2409::1/48" required>
+        <input id="q" name="q" type="text" spellcheck="false" placeholder="1.10.10.0/24 or 2409::/48">
       </label>
       <label class="field">
         <span>Source</span>
@@ -44,7 +44,7 @@
     </form>
     <p class="examples muted">Examples:
       <a class="example" href="?q=1.10.10.0/24" data-q="1.10.10.0/24">1.10.10.0/24</a> ·
-      <a class="example" href="?q=2409::1/48" data-q="2409::1/48">2409::1/48</a>
+      <a class="example" href="?q=2409::/48" data-q="2409::/48">2409::/48</a>
     </p>
     <p class="muted small">A prefix gets an exact match (or the longest covering prefix if there is none);
       an address gets the longest match. AS names come live from RIPEstat; if that fails, from
