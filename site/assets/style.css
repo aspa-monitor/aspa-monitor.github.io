@@ -283,6 +283,21 @@ h1.hero {
 .aspa-pairs li.ok .mark { color: var(--v-valid); }
 .aspa-pairs li.bad { color: var(--v-invalid); }
 .aspa-pairs li.bad .mark { color: var(--v-invalid); }
+/* ASPA pair marks on graph lines: X always, check marks only on the highlighted path */
+.pathgraph .pairmark circle { fill: var(--card); stroke-width: 2; }
+.pathgraph .pairmark text { font-size: 10px; font-weight: 800; font-family: var(--sans); }
+.pathgraph .pairmark.bad circle { stroke: var(--v-invalid); }
+.pathgraph .pairmark.bad text { fill: var(--v-invalid); }
+.pathgraph .pairmark.ok circle { stroke: var(--v-valid); }
+.pathgraph .pairmark.ok text { fill: var(--v-valid); }
+.pathgraph .pairmark { transition: opacity 0.15s; }
+.pathgraph .pairmark.ok { opacity: 0; pointer-events: none; }
+.pathgraph.focus .pairmark.ok.on { opacity: 1; pointer-events: auto; }
+.pathgraph.focus .pairmark.bad:not(.on) { opacity: 0.25; }
+.graph-legend .pm { display: inline-block; width: 15px; height: 15px; line-height: 12px; text-align: center; border-radius: 50%;
+  border: 2px solid; font-size: 10px; margin-right: 5px; background: var(--card); }
+.graph-legend .pm.bad { color: var(--v-invalid); border-color: var(--v-invalid); }
+.graph-legend .pm.ok { color: var(--v-valid); border-color: var(--v-valid); }
 .graph-peers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .peer-chip {
   font: inherit; font-size: 0.82em; cursor: pointer; color: var(--fg);

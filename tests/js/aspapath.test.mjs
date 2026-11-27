@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hop, verifyPath, parseAspas } from "../../site/assets/aspapath.js";
+import { hop, verifyPath, parseAspas, pairFor, combineMarks } from "../../site/assets/aspapath.js";
 import { groupPeers } from "../../site/assets/peergroups.js";
 
 // ASPAs as {customer: [providers]}; paths are written peer first, origin last.
@@ -25,6 +25,8 @@ test("one peering link at the top is allowed", () => {
   // 1 up to 2; 2-3 neither lists the other (a peer link); 3 down to 4.
   const r = v({ 1: [2], 2: [9], 3: [8], 4: [3] }, "4 3 2 1");
   assert.equal(r.verdict, "valid");
+  assert.match(r.reason, /AS2 – AS3 at the top/);
+  assert.match(v({ 1: [2], 2: [3], 3: [4] }, "4 3 2 1").reason, /^Every pair is authorised/);
   assert.match(r.pairs.find((p) => p.far === "2").text, /peering link at the top/);
 });
 
@@ -76,4 +78,16 @@ test("peers with different verdicts are not merged", () => {
 test("parseAspas rejects an unexpected file", () => {
   assert.throws(() => parseAspas({ schema_version: 2, aspas: {} }));
   assert.throws(() => parseAspas(null));
+});
+
+test("graph marks: one per line, combining merged peers", () => {
+  const r = v({ 1: [2], 2: [9], 5: [4], 4: [8] }, "5 4 3 2 1"); // invalid at 3<2 and 4<3
+  assert.equal(pairFor(r.pairs, "3", "2").mark, "bad");
+  assert.equal(pairFor(r.pairs, "2", "1").mark, "ok");
+  assert.equal(pairFor(r.pairs, "2", "3"), null); // direction matters
+  const ok = { mark: "ok", text: "a" }, none = { mark: "none", text: "b" }, bad = { mark: "bad", text: "c" };
+  assert.deepEqual(combineMarks([ok, ok]), { mark: "ok", texts: ["a"] });
+  assert.equal(combineMarks([ok, none]).mark, "none"); // a merged box: every member must be authorised
+  assert.equal(combineMarks([ok, bad, null]).mark, "bad");
+  assert.equal(combineMarks([null]).mark, "none");
 });

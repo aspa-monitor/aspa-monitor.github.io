@@ -6,6 +6,7 @@
 // search (peergroups.js); at most MAX_GROUPS are drawn until the reader asks for all of them.
 import { asName, shortName } from "./asnames.js";
 import { checkRov, rovDate } from "./rov.js";
+import { pairFor, combineMarks } from "./aspapath.js";
 import { hops, groupPeers, pickGroups, packLines } from "./peergroups.js";
 
 export { hops };
@@ -139,6 +140,7 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
       label: members.map((m) => m.label).join(" + ") };
   });
   const svg = drawGraph(entries, width);
+  const hasMarks = entries.some((e) => (e.members || []).some((m) => m.aspaPairs));
 
   const fig = document.createElement("figure");
   fig.className = "graph-card";
@@ -171,7 +173,7 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
     ${allGroups.length > MAX_GROUPS ? `<p class="graph-more"><button type="button" class="graph-toggle">${showAll
       ? `Show the ${MAX_GROUPS} main paths` : `Show all ${allGroups.length} paths`}</button></p>` : ""}
     <div class="graph-legend small muted">
-      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>
+      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>${hasMarks ? '<span><b class="pm bad">✗</b>pair that breaks ASPA</span><span><b class="pm ok">✓</b>authorised pair (on the highlighted path)</span>' : ""}
     </div>`;
   fig.querySelector(".graph-scroll").appendChild(svg);
   fig.querySelector(".graph-toggle")?.addEventListener("click", () => {
@@ -243,6 +245,22 @@ function rovBadge(grp, x, y, asn, prefixes) {
   }, (e) => set("ROV ?", "none", `Could not check RPKI ROV: BGPKIT did not answer (${e.message})`));
 }
 
+/**
+ * ASPA mark for a drawn line from e.from (nearer the peer) to e.to (nearer the origin): the route went to -> from.
+ * Every member peer behind the line counts; on a merged peer box's own line each member has its own peer AS.
+ */
+function edgeAspa(e, entries, byId, asnOf) {
+  const far = asnOf.get(e.to), fromPeer = byId.get(e.from).peer;
+  const pairs = [];
+  for (const u of e.users) {
+    for (const m of entries[u].members || []) {
+      if (!m.aspaPairs) continue;
+      pairs.push(pairFor(m.aspaPairs, fromPeer ? hops(m.path)[0] : asnOf.get(e.from), far));
+    }
+  }
+  return combineMarks(pairs);
+}
+
 /** The SVG for drawn entries [{label, prefix, path, peers, members, slot}]. */
 function drawGraph(entries, width) {
   const { nodes, edges, layers } = layout(entries);
@@ -301,6 +319,7 @@ function drawGraph(entries, width) {
     "aria-label": `AS path graph of ${entries.length} path(s)` });
   const edgeLayer = el("g", { class: "edges" }, svg);
   const nodeLayer = el("g", { class: "nodes" }, svg);
+  const markLayer = el("g", { class: "pairmarks" }, svg); // above boxes and lines
 
   const asnOf = new Map(nodes.map((n) => [n.id, n.asn]));
   const LANE = 3.4; // distance between side-by-side lines
@@ -324,6 +343,19 @@ function drawGraph(entries, width) {
         style: `stroke:${peerColour(slot)}` + (peerDashed(slot) ? `;stroke-dasharray:${DASH}` : "") }, edgeLayer);
       el("title", {}, p).textContent = `${entries[u].label}: AS${asnOf.get(e.from)} → AS${asnOf.get(e.to)}`;
     });
+    // ASPA mark for this pair, in the gap between the two boxes (middle segment of the line's route).
+    const { mark, texts } = edgeAspa(e, entries, byId, asnOf);
+    if (mark !== "none") {
+      const ids = e.chain, s = Math.floor((ids.length - 1) / 2) + 1; // segment ids[s-1] -> ids[s]
+      const out = (id) => at.get(id).m + mainSize(byId.get(id).layer);
+      const mm = (out(ids[s - 1]) + at.get(ids[s]).m) / 2, cc = (mid(ids[s - 1]) + mid(ids[s])) / 2;
+      const [x, y] = vertical ? [cc, mm] : [mm, cc];
+      const pm = el("g", { class: `pairmark ${mark}`, transform: `translate(${x.toFixed(1)},${y.toFixed(1)})`,
+        "data-users": e.users.join(" ") }, markLayer);
+      el("circle", { r: 7.5 }, pm);
+      el("text", { "text-anchor": "middle", y: 3.6 }, pm).textContent = mark === "bad" ? "✗" : "✓";
+      el("title", {}, pm).textContent = `ASPA, AS${asnOf.get(e.to)} → AS${asnOf.get(e.from)}: ${texts.join("; ")}`;
+    }
   }
 
   for (const n of nodes) {

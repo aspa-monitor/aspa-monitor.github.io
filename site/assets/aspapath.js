@@ -63,9 +63,15 @@ export function verifyPath(aspas, hops) {
   const minUp = ramp(upPair, (h) => h === "P"), minDown = ramp(downPair, (h) => h === "P");
   ramps = { maxUp, minUp, maxDown, minDown };
 
-  if (minUp + minDown >= N) {
+  if (minUp + minDown > N) {
     return finish("valid", "Every pair is authorised: the path climbs from the origin through providers listed in " +
       "ASPAs and comes down to the peer the same way.");
+  }
+  if (minUp + minDown === N) {
+    // The proven climbs meet with one pair between them, AS(minUp) - AS(minUp+1): ASPA allows one peering link there.
+    const a = seq[minUp - 1], b = seq[minUp];
+    return finish("valid", "The path climbs from the origin through providers listed in ASPAs and comes down to the " +
+      `peer the same way, with ${asl(a)} – ${asl(b)} at the top; ASPA allows that one pair to be a peering link.`);
   }
   if (maxUp + maxDown < N) {
     // The climb from the origin stops at AS(maxUp) -> AS(maxUp+1), the one from the peer at AS(N-maxDown+1) -> AS(N-maxDown).
@@ -99,6 +105,21 @@ function pairText(aspas, { near, far, up, down, mark }) {
   }
   const s1 = side(far, near, up), s2 = side(near, far, down);
   return s1 === s2 ? s1 : `${s1}; ${s2}`;
+}
+
+/** The verifyPath() pair for "route went far -> near", or null. */
+export const pairFor = (pairs, near, far) =>
+  (pairs || []).find((p) => String(p.near) === String(near) && String(p.far) === String(far)) || null;
+
+/**
+ * One graph mark from the pairs behind a drawn line (several when merged peers share it): "bad" if any breaks
+ * its path, "ok" if every one is authorised, otherwise "none" (nothing drawn). Texts: the distinct explanations.
+ */
+export function combineMarks(pairs) {
+  const ps = pairs.filter(Boolean);
+  if (!ps.length) return { mark: "none", texts: [] };
+  const mark = ps.some((p) => p.mark === "bad") ? "bad" : ps.every((p) => p.mark === "ok") ? "ok" : "none";
+  return { mark, texts: [...new Set(ps.map((p) => p.text))] };
 }
 
 /** {verdict, label} for display. */

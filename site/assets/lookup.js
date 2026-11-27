@@ -270,7 +270,7 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
       const verdict = aspaOf(r, aspa)?.verdict ?? null;
       // split: peers whose ASPA verdicts differ are never merged into one box (their first pair differs).
       entries.push({ label: sourceLabel(src), name: src.display_name || null, source: src.name, prefix: res.match.prefix, path: r.path,
-        aspa: verdict, split: verdict,
+        aspa: verdict, split: verdict, aspaPairs: aspaOf(r, aspa)?.pairs ?? null,
         slot: Number.isInteger(src.colour) ? src.colour : manifest.sources.indexOf(src) });
     }
   }
