@@ -1,12 +1,12 @@
 // Small client for the free BGPKIT API (CORS-enabled, no key). Used by /aspa/ (ASPA statistics) and
-// /lookup/ (RPKI ROV badges) until this project publishes its own RPKI data. Responses are cached in
+// /lookup/ (RPKI ROV badges, inferred AS relationships) until this project publishes its own RPKI data. Responses are cached in
 // sessionStorage for 30 minutes so reloading a page doesn't hit the API again.
-const API = "https://api.bgpkit.com/v4/rpki";
+const API = "https://api.bgpkit.com/v4"; // + "/rpki/..." (default) or "/routing/..."
 const CACHE_MS = 30 * 60 * 1000;
 const TIMEOUT_MS = 20000;
 
-export async function api(path) {
-  const key = `bgpkit:${path}`;
+export async function api(path, area = "rpki") {
+  const key = area === "rpki" ? `bgpkit:${path}` : `bgpkit:${area}/${path}`; // rpki keys unchanged
   try {
     const hit = JSON.parse(sessionStorage.getItem(key) || "null");
     if (hit && Date.now() - hit.t < CACHE_MS) return hit.v;
@@ -14,7 +14,7 @@ export async function api(path) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   try {
-    const r = await fetch(`${API}/${path}`, { signal: ctl.signal });
+    const r = await fetch(`${API}/${area}/${path}`, { signal: ctl.signal });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const v = await r.json();
     try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), v })); } catch { /* full */ }

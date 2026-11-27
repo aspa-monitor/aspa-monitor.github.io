@@ -9,6 +9,8 @@ import { loadAspas, verifyPath, VERDICT_LABEL } from "./aspapath.js";
 import { hops } from "./peergroups.js";
 
 const MAX_LIST_ROWS = 200;
+// Trial second map "AS relationships (inferred)" under the AS path graph. Set to false to remove it.
+const SHOW_REL_MAP = true;
 const STALE_HOURS = 3;
 
 const $ = (sel) => document.querySelector(sel);
@@ -277,8 +279,11 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
     }
   }
   const slot = results.querySelector(".graph-slot");
-  const graph = entries.length ? renderPathGraph(entries, { width: (slot.clientWidth || results.clientWidth || 940) - 52 }) : null;
+  const gw = (slot.clientWidth || results.clientWidth || 940) - 52;
+  const graph = entries.length ? renderPathGraph(entries, { width: gw }) : null;
   if (graph) slot.replaceWith(graph); else slot.remove();
+  // Trial: a second map of the same paths, lines coloured by inferred AS relationship (asrel.js).
+  if (graph && SHOW_REL_MAP) graph.after(renderPathGraph(entries, { width: gw, variant: "rel" }));
 }
 
 function current() {

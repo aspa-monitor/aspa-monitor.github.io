@@ -7,6 +7,7 @@
 import { asName, shortName } from "./asnames.js";
 import { checkRov, rovDate } from "./rov.js";
 import { pairFor, combineMarks } from "./aspapath.js";
+import { REL, relation, aspaDisagrees } from "./asrel.js";
 import { hops, groupPeers, pickGroups, packLines } from "./peergroups.js";
 
 export { hops };
@@ -128,7 +129,10 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
  * Peers with the same path after their own AS are merged (fresh for this search); more than MAX_GROUPS
  * groups are cut to the MAX_GROUPS that show the most ASes, with a button to redraw all of them.
  */
-export function renderPathGraph(peerEntries, { width = 900, showAll = false } = {}) {
+export function renderPathGraph(peerEntries, { width = 900, showAll = false, variant = "paths" } = {}) {
+  // variant "rel": the second map (trial) — same boxes and chips, but one line per AS pair coloured by the
+  // inferred AS relationship (asrel.js), instead of one line per peer path.
+  const rel = variant === "rel";
   peerEntries = peerEntries.filter((e) => hops(e.path).length);
   if (!peerEntries.length) return null;
   const allGroups = groupPeers(peerEntries);
@@ -139,7 +143,7 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
     return { prefix: gr.prefix, path: gr.path, peers: gr.peers, members, slot: members[0].slot,
       label: members.map((m) => m.label).join(" + ") };
   });
-  const svg = drawGraph(entries, width);
+  const svg = drawGraph(entries, width, variant);
   const hasMarks = entries.some((e) => (e.members || []).some((m) => m.aspaPairs));
 
   const fig = document.createElement("figure");
@@ -159,10 +163,14 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
   const VTONE = { valid: "valid", invalid: "invalid", unknown: "none" };
   const vtag = (v) => (v in VTONE ? ` <span class="vtag ${VTONE[v]}" title="ASPA path verdict">ASPA ${v}</span>` : "");
   fig.innerHTML = `<figcaption>
-      <strong>AS path graph</strong>
+      <strong>${rel ? "AS relationships (inferred) <span class=\"tag\">trial</span>" : "AS path graph"}</strong>
       <span class="graph-counts">${esc(counts)} to ${prefixes.map(esc).join(", ")}.${esc(aspaLine)}</span>
-      <span class="muted small">Each path has its own colour; lines run side by side where paths share an AS.
-        ${merged ? "Peers with the same path after their own AS share one box and one line (the first peer's colour). " : ""}Point at or tap a peer to highlight its path.</span>
+      <span class="muted small">${rel
+        ? `The same paths, with each line showing how the two networks probably relate, inferred by
+          <a href="https://bgpkit.com/api">BGPKIT</a> from observed routes (not published by the networks, so it can be
+          wrong). <b>!</b> marks a pair where this and ASPA disagree. Point at a label for details, or at a peer to highlight its path.`
+        : `Each path has its own colour; lines run side by side where paths share an AS.
+        ${merged ? "Peers with the same path after their own AS share one box and one line (the first peer's colour). " : ""}Point at or tap a peer to highlight its path.`}</span>
     </figcaption>
     <p class="graph-hint small muted" hidden>Swipe sideways to see the whole graph.</p>
     <div class="graph-scroll"></div>
@@ -172,12 +180,14 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false } = 
       `${esc(e.label)}${prefixes.length > 1 ? ` <span class="muted">(${esc(e.prefix)})</span>` : ""}${vtag(e.members[0].aspa)}</button>`).join("")}</div>
     ${allGroups.length > MAX_GROUPS ? `<p class="graph-more"><button type="button" class="graph-toggle">${showAll
       ? `Show the ${MAX_GROUPS} main paths` : `Show all ${allGroups.length} paths`}</button></p>` : ""}
-    <div class="graph-legend small muted">
+    <div class="graph-legend small muted">${rel ? Object.entries(REL).map(([k, r]) =>
+      `<span><b class="relkey ${k}">${r.glyph}</b>${esc(r.name)}</span>`).join("") +
+      '<span><b class="relkey flag">!</b>disagrees with ASPA</span></div>' : `
       <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>${hasMarks ? '<span><b class="pm bad">✗</b>pair that breaks ASPA</span><span><b class="pm ok">✓</b>authorised pair (on the highlighted path)</span>' : ""}
-    </div>`;
+    </div>`}`;
   fig.querySelector(".graph-scroll").appendChild(svg);
   fig.querySelector(".graph-toggle")?.addEventListener("click", () => {
-    const next = renderPathGraph(peerEntries, { width, showAll: !showAll });
+    const next = renderPathGraph(peerEntries, { width, showAll: !showAll, variant });
     fig.replaceWith(next);
     next.querySelector(".graph-toggle")?.focus({ preventScroll: true });
   });
@@ -262,7 +272,7 @@ function edgeAspa(e, entries, byId, asnOf) {
 }
 
 /** The SVG for drawn entries [{label, prefix, path, peers, members, slot}]. */
-function drawGraph(entries, width) {
+function drawGraph(entries, width, variant = "paths") {
   const { nodes, edges, layers } = layout(entries);
   const widest = Math.max(...layers.map((l) => l.filter((n) => !n.dummy).length));
 
@@ -323,7 +333,69 @@ function drawGraph(entries, width) {
 
   const asnOf = new Map(nodes.map((n) => [n.id, n.asn]));
   const LANE = 3.4; // distance between side-by-side lines
+  // Second map: one centred line per AS pair, coloured once BGPKIT answers, with a label in the gap.
+  const gapPoint = (e) => {
+    const ids = e.chain, k = Math.floor((ids.length - 1) / 2) + 1; // segment ids[k-1] -> ids[k]
+    const out = (id) => at.get(id).m + mainSize(byId.get(id).layer);
+    const mm = (out(ids[k - 1]) + at.get(ids[k]).m) / 2, cc = (mid(ids[k - 1]) + mid(ids[k])) / 2;
+    return vertical ? [cc, mm] : [mm, cc];
+  };
+  const relEdge = (e) => {
+    const ids = e.chain;
+    const out = (id) => at.get(id).m + mainSize(byId.get(id).layer);
+    let m0 = out(ids[0]), c0 = mid(ids[0]);
+    let d = `M${xy(m0, c0)}`;
+    for (let k = 1; k < ids.length; k++) {
+      const m1 = at.get(ids[k]).m, c1 = mid(ids[k]), h = (m1 - m0) / 2;
+      d += ` C${xy(m0 + h, c0)} ${xy(m1 - h, c1)} ${xy(m1, c1)}`;
+      m0 = out(ids[k]); c0 = c1;
+      if (k < ids.length - 1) d += ` L${xy(m0, c0)}`;
+    }
+    const line = el("path", { d, class: "edge rel pending", "data-users": e.users.join(" ") }, edgeLayer);
+    const [x, y] = gapPoint(e);
+    const lab = el("g", { class: "relmark pending", transform: `translate(${x.toFixed(1)},${y.toFixed(1)})`,
+      "data-users": e.users.join(" ") }, markLayer);
+    el("circle", { r: 8 }, lab);
+    const t = el("text", { "text-anchor": "middle", y: 4 }, lab);
+    t.textContent = "…";
+    const tip = el("title", {}, lab);
+    tip.textContent = "Looking up the AS relationship…";
+    el("title", {}, line);
+    // Who is "near" (nearer the peer): on a merged peer box's own line, each member peer is its own near AS.
+    const far = asnOf.get(e.to), fromPeer = byId.get(e.from).peer;
+    const sides = [];
+    for (const u of e.users) {
+      for (const m of entries[u].members || [{ path: entries[u].path }]) {
+        const near = fromPeer ? hops(m.path)[0] : asnOf.get(e.from);
+        if (!sides.some((x) => x.near === near)) sides.push({ near, pair: pairFor(m.aspaPairs, near, far) });
+      }
+    }
+    const numeric = /^\d+$/;
+    if (!numeric.test(far) || sides.some((x) => !numeric.test(x.near))) {
+      const k = "unknown";
+      line.setAttribute("class", `edge rel ${k}`); lab.setAttribute("class", `relmark ${k}`); t.textContent = REL[k].glyph;
+      tip.textContent = "AS_SET: no relationship to look up";
+      return;
+    }
+    Promise.all(sides.map((x) => relation(far, x.near).then((r) => ({ ...x, ...r })))).then((rs) => {
+      const kinds = [...new Set(rs.map((r) => r.kind))];
+      const kind = kinds.length === 1 ? kinds[0] : "mixed";
+      const flags = rs.map((r) => aspaDisagrees(r.kind, r.pair, far, r.near)).filter(Boolean);
+      line.setAttribute("class", `edge rel ${kind}`);
+      lab.setAttribute("class", `relmark ${kind}${flags.length ? " flag" : ""}`);
+      t.textContent = flags.length ? "!" : REL[kind].glyph;
+      const lines = rs.map((r) => REL[r.kind].text(far, r.near));
+      const text = [...lines, ...flags.map((f) => f.text)].join("\n") +
+        (rs[0].date ? `\nInferred by BGPKIT, snapshot of ${rs[0].date}.` : "");
+      tip.textContent = text;
+      line.querySelector("title").textContent = text;
+    }, (err) => {
+      line.setAttribute("class", "edge rel unknown"); lab.setAttribute("class", "relmark unknown"); t.textContent = "?";
+      tip.textContent = `Could not look up the relationship: BGPKIT did not answer (${err.message})`;
+    });
+  };
   for (const e of edges) {
+    if (variant === "rel") { relEdge(e); continue; }
     const users = [...e.users].sort((a, b) => (entries[a].slot ?? a) - (entries[b].slot ?? b));
     users.forEach((u, k) => {
       const off = (k - (users.length - 1) / 2) * LANE;

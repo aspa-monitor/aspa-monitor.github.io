@@ -283,6 +283,38 @@ h1.hero {
 .aspa-pairs li.ok .mark { color: var(--v-valid); }
 .aspa-pairs li.bad { color: var(--v-invalid); }
 .aspa-pairs li.bad .mark { color: var(--v-invalid); }
+/* Second map (trial): lines and labels by inferred AS relationship */
+:root, [data-theme="daylight"], [data-theme="sand"] {
+  --rel-up: #2a78d6; --rel-down: #1baf7a; --rel-peer: #c98500; --rel-mixed: #9085e9; --rel-unknown: #9aa3b5; --rel-flag: #d95926;
+}
+[data-theme="midnight"], [data-theme="ocean"] {
+  --rel-up: #5b9bf0; --rel-down: #2bc58a; --rel-peer: #f0b429; --rel-mixed: #a89ef2; --rel-unknown: #5d6678; --rel-flag: #f08a5d;
+}
+.pathgraph .edge.rel { stroke-width: 3; stroke: var(--rel-unknown); }
+.pathgraph .edge.rel.pending { stroke-dasharray: 2 5; }
+.pathgraph .edge.rel.unknown { stroke-dasharray: 5 4; }
+.pathgraph .edge.rel.up { stroke: var(--rel-up); }
+.pathgraph .edge.rel.down { stroke: var(--rel-down); }
+.pathgraph .edge.rel.peer { stroke: var(--rel-peer); }
+.pathgraph .edge.rel.mixed { stroke: var(--rel-mixed); }
+.pathgraph .relmark { --c: var(--rel-unknown); transition: opacity 0.15s; }
+.pathgraph .relmark.up { --c: var(--rel-up); }
+.pathgraph .relmark.down { --c: var(--rel-down); }
+.pathgraph .relmark.peer { --c: var(--rel-peer); }
+.pathgraph .relmark.mixed { --c: var(--rel-mixed); }
+.pathgraph .relmark circle { fill: var(--card); stroke: var(--c); stroke-width: 2; }
+.pathgraph .relmark text { font-size: 11px; font-weight: 800; fill: var(--c); font-family: var(--sans); }
+.pathgraph .relmark.flag circle { stroke: var(--rel-flag); stroke-width: 2.6; fill: color-mix(in srgb, var(--rel-flag) 16%, var(--card)); }
+.pathgraph .relmark.flag text { fill: var(--rel-flag); }
+.pathgraph.focus .relmark:not(.on) { opacity: 0.25; }
+.graph-legend .relkey { display: inline-block; width: 16px; height: 16px; line-height: 13px; text-align: center; border-radius: 50%;
+  border: 2px solid var(--rel-unknown); color: var(--rel-unknown); background: var(--card); font-size: 11px; margin-right: 5px; }
+.graph-legend .relkey.up { border-color: var(--rel-up); color: var(--rel-up); }
+.graph-legend .relkey.down { border-color: var(--rel-down); color: var(--rel-down); }
+.graph-legend .relkey.peer { border-color: var(--rel-peer); color: var(--rel-peer); }
+.graph-legend .relkey.mixed { border-color: var(--rel-mixed); color: var(--rel-mixed); }
+.graph-legend .relkey.flag { border-color: var(--rel-flag); color: var(--rel-flag); }
+.graph-card + .graph-card { margin-top: 16px; }
 /* ASPA pair marks on graph lines: X always, check marks only on the highlighted path */
 .pathgraph .pairmark circle { fill: var(--card); stroke-width: 2; }
 .pathgraph .pairmark text { font-size: 10px; font-weight: 800; font-family: var(--sans); }

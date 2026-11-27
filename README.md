@@ -32,7 +32,12 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   against Cloudflare Radar's ASPA validator on sample paths. The graph's peer chips carry the verdict and the caption
   counts them; peers whose verdicts differ are never merged into one box. Lines between boxes carry pair marks:
   a red ✗ where a drawn path breaks ASPA (always shown) and a green ✓ for an authorised pair (shown on the
-  highlighted path only, to keep the graph readable). Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
+  highlighted path only, to keep the graph readable).
+  **Trial:** a second map, "AS relationships (inferred)", draws the same paths with one line per AS pair coloured by
+  the relationship BGPKIT infers from observed routes (`/v4/routing/as2rel`, daily; `site/assets/asrel.js`):
+  ↑ customer → provider, ↓ provider → customer, ↔ peers, ≈ mixed, ? not known. A **!** marks a pair where the data says
+  customer → provider but the customer's ASPA leaves that provider out (the ASPA is then probably out of date).
+  Remove it by setting `SHOW_REL_MAP = false` in `site/assets/lookup.js`. Shareable URLs: `/lookup/?q=1.10.10.0/24&source=rrc00_AS7018` (`source=all` for all sources).
   AS names are fetched live in the browser from the RIPEstat `as-overview` API (8 s timeout), cached in `localStorage`
   for 7 days. If RIPEstat fails or has no name, the page uses the site's own copy of RIPE NCC's
   [asn.txt](https://ftp.ripe.net/ripe/asnames/asn.txt) (all RIRs), shown in italics and cached for 1 day.
