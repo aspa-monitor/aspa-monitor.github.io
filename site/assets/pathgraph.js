@@ -180,7 +180,7 @@ export function renderPathGraph(peerEntries, { width = 900, peers = "best", vari
     <div class="graph-legend small muted">${rel ? Object.entries(REL).map(([k, r]) =>
       `<span><b class="relkey ${k}">${r.glyph}</b>${esc(r.name)}</span>`).join("") +
       '<span><b class="relkey flag">!</b>disagrees with ASPA</span></div>' : `
-      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>${hasMarks ? '<span><b class="pm bad">✗</b>pair that breaks ASPA</span><span><b class="pm ok">✓</b>authorised pair</span>' : ""}
+      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>${hasMarks ? `<span><b class="pm bad">✗</b>pair that breaks ASPA</span><span><b class="pm ok wide">${direction === "tb" ? "✓↓" : "✓→"}</b>authorised pair; the arrow points at the provider</span>` : ""}
     </div>`}`;
   fig.querySelector(".graph-scroll").appendChild(svg);
   if (controls) fig.prepend(controls);
@@ -409,7 +409,7 @@ function drawGraph(entries, width, variant = "paths", direction = "lr") {
       el("title", {}, p).textContent = `${entries[u].label}: AS${asnOf.get(e.from)} → AS${asnOf.get(e.to)}`;
     });
     // ASPA mark for this pair, in the gap between the two boxes (middle segment of the line's route).
-    const { mark, texts } = edgeAspa(e, entries, byId, asnOf);
+    const { mark, texts, provider } = edgeAspa(e, entries, byId, asnOf);
     if (mark !== "none") {
       const ids = e.chain, s = Math.floor((ids.length - 1) / 2) + 1; // segment ids[s-1] -> ids[s]
       const out = (id) => at.get(id).m + mainSize(byId.get(id).layer);
@@ -417,8 +417,16 @@ function drawGraph(entries, width, variant = "paths", direction = "lr") {
       const [x, y] = vertical ? [cc, mm] : [mm, cc];
       const pm = el("g", { class: `pairmark ${mark}`, transform: `translate(${x.toFixed(1)},${y.toFixed(1)})`,
         "data-users": e.users.join(" ") }, markLayer);
-      el("circle", { r: 7.5 }, pm);
-      el("text", { "text-anchor": "middle", y: 3.6 }, pm).textContent = mark === "bad" ? "✗" : "✓";
+      // An authorised pair gets an arrow pointing at the provider (the peer side is left / top).
+      const arrow = provider && (vertical ? { near: "↑", far: "↓", both: "↕" } : { near: "←", far: "→", both: "↔" })[provider];
+      if (arrow) {
+        el("rect", { x: -17, y: -9, width: 34, height: 18, rx: 9, class: "pill" }, pm);
+        const t = el("text", { "text-anchor": "middle", y: 4.3, class: "wide" }, pm);
+        t.textContent = provider === "near" ? `${arrow}✓` : `✓${arrow}`;
+      } else {
+        el("circle", { r: 7.5 }, pm);
+        el("text", { "text-anchor": "middle", y: 3.6 }, pm).textContent = mark === "bad" ? "✗" : "✓";
+      }
       el("title", {}, pm).textContent = `ASPA, AS${asnOf.get(e.to)} → AS${asnOf.get(e.from)}: ${texts.join("; ")}`;
     }
   }

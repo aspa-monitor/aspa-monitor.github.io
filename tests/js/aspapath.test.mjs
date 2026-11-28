@@ -91,3 +91,15 @@ test("graph marks: one per line, combining merged peers", () => {
   assert.equal(combineMarks([ok, bad, null]).mark, "bad");
   assert.equal(combineMarks([null]).mark, "none");
 });
+
+test("combineMarks says which side of an authorised pair is the provider", async () => {
+  const { providerSide } = await import("../../site/assets/aspapath.js");
+  const up = { mark: "ok", up: "P", down: "U", text: "u" }, down = { mark: "ok", up: "N", down: "P", text: "d" };
+  const both = { mark: "ok", up: "P", down: "P", text: "b" };
+  assert.equal(providerSide(up), "near");
+  assert.equal(providerSide(down), "far");
+  assert.equal(providerSide(both), "both");
+  assert.equal(combineMarks([up, up]).provider, "near");
+  assert.equal(combineMarks([up, down]).provider, null); // merged peers disagree: no arrow
+  assert.equal(combineMarks([{ mark: "bad", up: "N", down: "N" }]).provider, null);
+});

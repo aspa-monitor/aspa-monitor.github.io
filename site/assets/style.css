@@ -451,3 +451,7 @@ table.list td .asn .asname { font-family: var(--sans); }
 @media (max-width: 699px) {
   .peer-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 }
+.pathgraph .pairmark rect.pill { fill: var(--card); stroke-width: 2; }
+.pathgraph .pairmark.ok rect.pill { stroke: var(--v-valid); }
+.graph-legend .pm.wide { width: 28px; border-radius: 8px; }
+.pathgraph .pairmark text.wide { font-size: 12px; }

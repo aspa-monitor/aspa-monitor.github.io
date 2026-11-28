@@ -118,9 +118,20 @@ export const pairFor = (pairs, near, far) =>
  */
 export function combineMarks(pairs) {
   const ps = pairs.filter(Boolean);
-  if (!ps.length) return { mark: "none", texts: [] };
+  if (!ps.length) return { mark: "none", texts: [], provider: null };
   const mark = ps.some((p) => p.mark === "bad") ? "bad" : ps.every((p) => p.mark === "ok") ? "ok" : "none";
-  return { mark, texts: [...new Set(ps.map((p) => p.text))] };
+  // Which side of an authorised pair is the provider, when every pair behind the line agrees.
+  const sides = [...new Set(ps.map(providerSide))];
+  const provider = mark === "ok" && sides.length === 1 ? sides[0] : null;
+  return { mark, texts: [...new Set(ps.map((p) => p.text))], provider };
+}
+
+/** For an authorised pair: "near" (the AS nearer the peer is the provider: the route was sent up), "far" (the AS
+ *  nearer the origin is the provider: sent down), "both" (each lists the other), or null when neither does. */
+export function providerSide(p) {
+  if (!p) return null;
+  if (p.up === "P" && p.down === "P") return "both";
+  return p.up === "P" ? "near" : p.down === "P" ? "far" : null;
 }
 
 /** {verdict, label} for display. */

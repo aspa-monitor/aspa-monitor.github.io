@@ -32,8 +32,9 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   downstream procedure, as BGPKIT and Cloudflare Radar do for collector data). Verdicts and ramp lengths were checked
   against Cloudflare Radar's ASPA validator on sample paths. The graph's peer chips carry the verdict and the caption
   counts them; peers whose verdicts differ are never merged into one box. Lines between boxes carry pair marks:
-  a red ✗ where a drawn path breaks ASPA (always shown) and a green ✓ for an authorised pair (shown on the
-  highlighted path only, to keep the graph readable).
+  a red ✗ where a drawn path breaks ASPA (always shown) and a green ✓ for an authorised pair (always shown) with an
+  arrow pointing at the provider (←✓ / ✓→, or ↑ / ↓ top to bottom; ↔ when each lists the other; no arrow when merged
+  peers disagree).
   **Trial:** a second tab of the graph card, "AS relationships", draws the same paths with one line per AS pair coloured by
   the relationship BGPKIT infers from observed routes (`/v4/routing/as2rel`, daily; `site/assets/asrel.js`):
   ↑ customer → provider, ↓ provider → customer, ↔ peers, ≈ mixed, ? not known. A **!** marks a pair where the data says
