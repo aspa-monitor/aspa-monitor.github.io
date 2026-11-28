@@ -333,7 +333,7 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
 }
 
 // Looked up when "Look up" is pressed with an empty box.
-const DEFAULT_QUERY = "2409::/28";
+const DEFAULT_QUERY = "2409::/48";
 
 function current() {
   const p = new URLSearchParams(location.search);

@@ -4,6 +4,8 @@
 // their lines run side by side. Pointing at (or tapping) a peer chip or box highlights that one path.
 // Peers whose paths are identical after their own AS are merged into one box and one set of lines for this
 // search (peergroups.js) when the reader picks "All sources"; by default at most MAX_GROUPS single peers are drawn.
+// On a narrow card (phones, COMPACT_W) the graph is compact: at most MAX_GROUPS_PHONE peers, boxes with the AS
+// number only (tap a box for its name), and Top to bottom by default, so it fits without sideways scrolling.
 import { asName, shortName } from "./asnames.js";
 import { checkRov, rovDate } from "./rov.js";
 import { pairFor, combineMarks } from "./aspapath.js";
@@ -12,6 +14,8 @@ import { hops, groupPeers, singlePeers, pickPeers, packLines } from "./peergroup
 
 export { hops };
 export const MAX_GROUPS = 6;
+export const MAX_GROUPS_PHONE = 3;
+export const COMPACT_W = 600; // graph width (px) below which the compact phone graph is drawn
 
 const SVG = "http://www.w3.org/2000/svg";
 // 16 colours (style.css --peer-1 .. --peer-16), all solid lines; slots beyond 15 share a neutral grey.
@@ -127,7 +131,7 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
  * merged into one box (fresh for this search).
  */
 export function renderPathGraph(peerEntries, { width = 900, peers = "best", variant = "paths", direction = "lr",
-  controls = null } = {}) {
+  controls = null, cap = MAX_GROUPS, compact = false } = {}) {
   // controls: an element put above the caption (renderGraphPanel's tabs and choices).
   // variant "rel": the second map (trial) — same boxes and chips, but one line per AS pair coloured by the
   // inferred AS relationship (asrel.js), instead of one line per peer path.
@@ -135,14 +139,14 @@ export function renderPathGraph(peerEntries, { width = 900, peers = "best", vari
   peerEntries = peerEntries.filter((e) => hops(e.path).length);
   if (!peerEntries.length) return null;
   const allGroups = groupPeers(peerEntries); // distinct paths, for the counts and the ASPA tally
-  const groups = peers === "all" ? allGroups : pickPeers(singlePeers(peerEntries), MAX_GROUPS);
+  const groups = peers === "all" ? allGroups : pickPeers(singlePeers(peerEntries), cap);
   // One drawn entry per group: the first member's path and colour.
   const entries = groups.map((gr) => {
     const members = gr.members.map((i) => peerEntries[i]);
     return { prefix: gr.prefix, path: gr.path, peers: gr.peers, members, slot: members[0].slot,
       label: members.map((m) => m.label).join(" + ") };
   });
-  const svg = drawGraph(entries, width, variant, direction);
+  const svg = drawGraph(entries, width, variant, direction, compact);
   const hasMarks = entries.some((e) => (e.members || []).some((m) => m.aspaPairs));
 
   const fig = document.createElement("figure");
@@ -169,10 +173,12 @@ export function renderPathGraph(peerEntries, { width = 900, peers = "best", vari
           <a href="https://bgpkit.com/api">BGPKIT</a> from observed routes (not published by the networks, so it can be
           wrong). <b>!</b> marks a pair where this and ASPA disagree. Point at a label for details, or at a peer to highlight its path.`
         : `Each path has its own colour; lines run side by side where paths share an AS.
-        ${merged ? "Peers with the same path after their own AS share one box and one line (the first peer's colour). " : ""}Point at or tap a peer to highlight its path.`}</span>
+        ${merged ? "Peers with the same path after their own AS share one box and one line (the first peer's colour). " : ""}${compact
+          ? "Tap a peer to highlight its path, or a box or mark for details." : "Point at or tap a peer to highlight its path."}`}</span>
     </figcaption>
     <p class="graph-hint small muted" hidden>Swipe sideways to see the whole graph.</p>
     <div class="graph-scroll"></div>
+    <p class="graph-info small" hidden></p>
     <div class="graph-peers">${entries.map((e, i) =>
       `<button type="button" class="peer-chip" data-i="${i}">${e.members.map((m) =>
         `<i class="swatch" style="--sw:${peerColour(m.slot)}"></i>`).join("")}` +
@@ -214,17 +220,37 @@ export function renderPathGraph(peerEntries, { width = 900, peers = "best", vari
     node.addEventListener("mouseenter", () => pinned == null && highlight(i));
     node.addEventListener("mouseleave", () => pinned == null && highlight(null));
   }
+  // Compact (phones): tooltips don't show on touch, so tapping a box, ROV pill or line mark writes its tooltip
+  // (AS name, role, verdict) in a line under the graph; tapping a peer box also pins its path.
+  if (compact) {
+    const info = fig.querySelector(".graph-info");
+    svg.addEventListener("click", (ev) => {
+      const item = ev.target.closest(".rov-pill, .node, .pairmark, .relmark");
+      const tip = item && item.querySelector(":scope > title");
+      if (!tip) return;
+      info.textContent = tip.textContent;
+      info.hidden = false;
+      const node = ev.target.closest(".node.peer");
+      if (node && !node.dataset.users.includes(" ")) {
+        const i = Number(node.dataset.users);
+        pinned = pinned === i ? null : i; highlight(pinned);
+      }
+    });
+  }
   return fig;
 }
 
 const ROV_TEXT = { valid: "ROV valid", invalid: "ROV invalid", none: "ROV not found" };
+// Compact boxes are narrow: a symbol instead of the word (the tooltip / tap line has the full text).
+const ROV_SHORT = { valid: "ROV ✓", invalid: "ROV ✗", none: "ROV –", mixed: "ROV ±", pending: "ROV …", error: "ROV ?" };
+export const ROV_SHORT_W = 46; // width of the widest short pill
 
 /**
  * RPKI ROV pill in an origin box at (x, y), plus the box's verdict colour: the same verdict and request as the
  * route cards (rov.js).
  * If the origin announces several matched prefixes with different verdicts, the pill says "mixed".
  */
-function rovBadge(grp, x, y, asn, prefixes) {
+function rovBadge(grp, x, y, asn, prefixes, compact = false) {
   const pill = el("g", { class: "rov-pill pending", transform: `translate(${x},${y})` }, grp);
   const rect = el("rect", { width: 70, height: 16, rx: 8 }, pill);
   const text = el("text", { x: 7, y: 11.5 }, pill);
@@ -235,17 +261,19 @@ function rovBadge(grp, x, y, asn, prefixes) {
     // The whole origin box is outlined in the verdict's colour: green valid, red invalid, grey not found.
     grp.classList.remove("rov-valid", "rov-invalid", "rov-none", "rov-pending");
     grp.classList.add(`rov-${tone}`);
-    rect.setAttribute("width", String(Math.ceil(label.length * 6.2 + 14)));
+    rect.setAttribute("width", String(compact ? ROV_SHORT_W : Math.ceil(label.length * 6.2 + 14)));
     tip.textContent = tipText;
   };
-  set("ROV …", "pending", "Checking RPKI ROV…");
+  const short = (key, long) => (compact ? ROV_SHORT[key] : long);
+  set(short("pending", "ROV …"), "pending", "Checking RPKI ROV…");
   Promise.all(prefixes.map((p) => checkRov(p, asn).then((r) => ({ p, ...r })))).then((rs) => {
     const tones = new Set(rs.map((r) => r.view.tone));
     const detail = rs.map((r) => `${r.p} from AS${asn}: ${r.view.label}. ${r.view.text}`).join("\n");
     const when = `RPKI data of ${rovDate(rs[0].date)}, via BGPKIT`;
-    if (tones.size === 1) set(ROV_TEXT[rs[0].view.tone] || `ROV ${rs[0].view.label}`, rs[0].view.tone, `${detail}\n${when}`);
-    else set("ROV mixed", "none", `${detail}\n${when}`);
-  }, (e) => set("ROV ?", "none", `Could not check RPKI ROV: BGPKIT did not answer (${e.message})`));
+    const tone = rs[0].view.tone;
+    if (tones.size === 1) set(short(tone in ROV_SHORT ? tone : "error", ROV_TEXT[tone] || `ROV ${rs[0].view.label}`), tone, `${detail}\n${when}`);
+    else set(short("mixed", "ROV mixed"), "none", `${detail}\n${when}`);
+  }, (e) => set(short("error", "ROV ?"), "none", `Could not check RPKI ROV: BGPKIT did not answer (${e.message})`));
 }
 
 /**
@@ -265,30 +293,41 @@ function edgeAspa(e, entries, byId, asnOf) {
 }
 
 /** The SVG for drawn entries [{label, prefix, path, peers, members, slot}]. */
-function drawGraph(entries, width, variant = "paths", direction = "lr") {
+function drawGraph(entries, width, variant = "paths", direction = "lr", compact = false) {
   const { nodes, edges, layers } = layout(entries);
   const widest = Math.max(...layers.map((l) => l.filter((n) => !n.dummy).length));
 
   // direction "lr" (default): peers left, origin right; "tb": peers on top, origin at the bottom. Box width
   // stretches to use the space; when it can't fit (phones) the graph scrolls sideways.
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  const hW = Math.floor((width - 44 * (layers.length - 1)) / layers.length);
   const vertical = direction === "tb";
   const maxLayer = layers.length - 1;
-  const g = vertical
-    ? { nodeW: clamp(Math.floor((width - 10 * (widest - 1)) / widest), 104, 160), nodeH: 44, gapMain: 40, gapCross: 10 }
-    : { nodeW: clamp(hW, 124, 200), nodeH: 44, gapMain: 48, gapCross: 12 };
+  let g;
+  if (compact) {
+    // Phones: AS number only, so a box only needs room for the longest number (and the origin's short ROV pill).
+    const longest = Math.max(...nodes.filter((n) => !n.dummy).map((n) => Math.min(12, `AS${n.asn}`.length)));
+    const need = Math.ceil(Math.max(longest * 7.7 + 24, ROV_SHORT_W + 18));
+    g = vertical
+      ? { nodeW: clamp(Math.floor((width - 8 * (widest - 1)) / widest), need, 120), nodeH: 30, gapMain: 34, gapCross: 8 }
+      : { nodeW: clamp(Math.floor((width - 40 * maxLayer) / layers.length), need, 120), nodeH: 30, gapMain: 40, gapCross: 8 };
+  } else {
+    const hW = Math.floor((width - 44 * maxLayer) / layers.length);
+    g = vertical
+      ? { nodeW: clamp(Math.floor((width - 10 * (widest - 1)) / widest), 104, 160), nodeH: 44, gapMain: 40, gapCross: 10 }
+      : { nodeW: clamp(hW, 124, 200), nodeH: 44, gapMain: 48, gapCross: 12 };
+  }
   const DUMMY = 4 + 3.4 * Math.max(...edges.map((e) => e.users.length)); // room passing lines take up
 
   // Box text. A merged peer box lists every member AS (wrapping as needed) and their names (one line,
-  // shortened if needed; the tooltip has all), so it can be taller than the others.
+  // shortened if needed; the tooltip has all), so it can be taller than the others. Compact boxes have no names.
   const nameMax = Math.floor((g.nodeW - 18) / 5.9);
   const numMax = Math.floor((g.nodeW - 22) / 7.7);
+  const nameH = compact ? 0 : 16;
   for (const n of nodes) {
     if (n.dummy) continue;
     const group = n.peer && (n.peers.length > 1 || entries[n.users[0]].members.length > 1);
     n.numLines = group ? packLines(n.peers.map((a) => `AS${a}`), numMax) : null;
-    n.h = group ? 18 + 15 * (n.numLines.length - 1) + 16 + 10 : g.nodeH; // single box: 18 + 16 + 10 = 44
+    n.h = group ? 18 + 15 * (n.numLines.length - 1) + nameH + 10 : g.nodeH; // single box: 18 + 16 + 10 = 44 (compact 30)
     // The origin box gets a third line: the RPKI ROV verdict for (prefix, origin).
     n.rov = n.origin && /^\d+$/.test(n.asn);
     if (n.rov) n.h += ROV_LINE;
@@ -460,7 +499,7 @@ function drawGraph(entries, width, variant = "paths", direction = "lr") {
     if (n.numLines) {
       // Merged peers: every member AS, then their names.
       n.numLines.forEach((line, k) => { el("text", { x: tx, y: 18 + 15 * k, class: "num" }, grp).textContent = line; });
-      const nameEl = el("text", { x: tx, y: 18 + 15 * (n.numLines.length - 1) + 16, class: "name" }, grp);
+      const nameEl = compact ? null : el("text", { x: tx, y: 18 + 15 * (n.numLines.length - 1) + 16, class: "name" }, grp);
       const members = entries[users[0]].members;
       const asList = n.peers.map((p) => `AS${p}`).join(" + ");
       // Several peers share this box, so each note names its peer.
@@ -471,26 +510,27 @@ function drawGraph(entries, width, variant = "paths", direction = "lr") {
         const named = members.find((mb) => mb.name && hops(mb.path)[0] === p);
         return named ? named.name : shortName((await asName(Number(p))).name) || `AS${p}`;
       })).then((names) => {
-        nameEl.textContent = fit(names.join(" + "), nameMax);
+        if (nameEl) nameEl.textContent = fit(names.join(" + "), nameMax);
         tip.textContent = `${asList}: ${names.join(" + ")} · peers with the same path${noteText}`;
       });
       continue;
     }
-    if (n.rov) rovBadge(grp, tx, bh - ROV_LINE - 4, Number(asn), [...new Set(users.map((i) => entries[i].prefix))]);
-    const label = isSet ? fit(`{${asn.slice(1, -1).split(",").map((s) => `AS${s}`).join(", ")}}`, nameMax + 2) : `AS${asn}`;
-    el("text", { x: tx, y: 18, class: "num" }, grp).textContent = label;
-    const nameEl = el("text", { x: tx, y: 34, class: "name" }, grp);
+    if (n.rov) rovBadge(grp, tx, bh - ROV_LINE - 4, Number(asn), [...new Set(users.map((i) => entries[i].prefix))], compact);
+    const label = isSet ? fit(`{${asn.slice(1, -1).split(",").map((s) => `AS${s}`).join(", ")}}`, compact ? numMax : nameMax + 2) : `AS${asn}`;
+    el("text", { x: tx, y: compact ? 19 : 18, class: "num" }, grp).textContent = label;
+    const nameEl = compact ? null : el("text", { x: tx, y: 34, class: "name" }, grp);
     // A peer box also carries the manifest's note about that peer (e.g. which network most of its routes use).
     const peerNotes = n.peer ? [...new Set(users.flatMap((i) => (entries[i].members || [entries[i]]))
       .filter((mb) => mb.note && hops(mb.path)[0] === asn).map((mb) => mb.note))] : [];
     const noteText = peerNotes.length ? `\n${peerNotes.join("\n")}` : "";
     tip.textContent = `${label} · ${role}${noteText}`;
     if (isSet) {
-      nameEl.textContent = "AS_SET (unordered)";
+      if (nameEl) nameEl.textContent = "AS_SET (unordered)";
+      else tip.textContent = `${label} · AS_SET (unordered) · ${role}${noteText}`;
     } else {
       asName(Number(asn)).then(({ name }) => {
         if (!name) return;
-        nameEl.textContent = fit(shortName(name), nameMax); // full "HANDLE - Organisation" in the tooltip
+        if (nameEl) nameEl.textContent = fit(shortName(name), nameMax); // full "HANDLE - Organisation" in the tooltip
         tip.textContent = `AS${asn} ${name} · ${role}${noteText}`;
       });
     }
@@ -499,18 +539,23 @@ function drawGraph(entries, width, variant = "paths", direction = "lr") {
 }
 
 const DIRS = [["lr", "Left to right"], ["tb", "Top to bottom"]];
-const PEERS = [["best", `${MAX_GROUPS} best peers`], ["all", "All sources (same paths merged)"]];
-const DIR_KEY = "graphDirection";
+const peerChoices = (cap) => [["best", `${cap} best peers`], ["all", "All sources (same paths merged)"]];
+// The layout choice is kept apart for phones (compact, Top to bottom by default) and wider screens (Left to right).
+const DIR_KEY = "graphDirection", DIR_KEY_PHONE = "graphDirectionPhone";
 
 /**
  * The lookup graph card: tabs for the path graph and (optionally) the AS relationship map, which peers to draw
  * (the best MAX_GROUPS, or all sources merged) and the layout (left to right / top to bottom, remembered in
- * localStorage). The choices carry over between tabs.
+ * localStorage). The choices carry over between tabs. Below COMPACT_W the graph is the compact phone one:
+ * the best MAX_GROUPS_PHONE peers, AS numbers only, Top to bottom by default.
  */
 export function renderGraphPanel(entries, { width = 900, withRel = false } = {}) {
-  let stored = "lr";
-  try { stored = localStorage.getItem(DIR_KEY) || "lr"; } catch { /* storage blocked */ }
-  const state = { variant: "paths", direction: DIRS.some(([k]) => k === stored) ? stored : "lr", peers: "best" };
+  const compact = width < COMPACT_W;
+  const cap = compact ? MAX_GROUPS_PHONE : MAX_GROUPS;
+  const dirKey = compact ? DIR_KEY_PHONE : DIR_KEY, dirDefault = compact ? "tb" : "lr";
+  let stored = dirDefault;
+  try { stored = localStorage.getItem(dirKey) || dirDefault; } catch { /* storage blocked */ }
+  const state = { variant: "paths", direction: DIRS.some(([k]) => k === stored) ? stored : dirDefault, peers: "best" };
   const wrap = document.createElement("div");
   wrap.className = "graph-panel";
   const draw = (focusSel) => {
@@ -519,7 +564,7 @@ export function renderGraphPanel(entries, { width = 900, withRel = false } = {})
     bar.innerHTML = (withRel ? `<div class="graph-tabs" role="tablist" aria-label="Graph">${[["paths", "AS paths"],
       ["rel", 'AS relationships <span class="tag">trial</span>']].map(([k, t]) =>
       `<button type="button" role="tab" class="graph-tab" data-v="${k}" aria-selected="${state.variant === k}">${t}</button>`).join("")}</div>` : "") +
-      `<label class="graph-peers-pick"><span class="muted small">Peers</span><select class="graph-peers-sel">${PEERS.map(([k, t]) =>
+      `<label class="graph-peers-pick"><span class="muted small">Peers</span><select class="graph-peers-sel">${peerChoices(cap).map(([k, t]) =>
         `<option value="${k}"${state.peers === k ? " selected" : ""}>${t}</option>`).join("")}</select></label>` +
       `<div class="graph-dir" role="group" aria-label="Layout"><span class="muted small">Layout</span>${DIRS.map(([k, t]) =>
         `<button type="button" class="graph-dir-btn" data-d="${k}" aria-pressed="${state.direction === k}">${t}</button>`).join("")}</div>`;
@@ -533,11 +578,11 @@ export function renderGraphPanel(entries, { width = 900, withRel = false } = {})
     bar.querySelectorAll(".graph-dir-btn").forEach((b) => b.addEventListener("click", () => {
       if (state.direction === b.dataset.d) return;
       state.direction = b.dataset.d;
-      try { localStorage.setItem(DIR_KEY, state.direction); } catch { /* storage blocked */ }
+      try { localStorage.setItem(dirKey, state.direction); } catch { /* storage blocked */ }
       draw(`.graph-dir-btn[data-d="${b.dataset.d}"]`);
     }));
     const fig = renderPathGraph(entries, { width, peers: state.peers, variant: state.variant, direction: state.direction,
-      controls: bar });
+      controls: bar, cap, compact });
     wrap.replaceChildren(fig);
     if (focusSel) wrap.querySelector(focusSel)?.focus({ preventScroll: true });
   };

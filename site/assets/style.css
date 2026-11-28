@@ -348,6 +348,7 @@ h1.hero {
 .graph-legend .dot.rov.invalid { border-color: var(--v-invalid); }
 .graph-legend .dot.rov.none { border-color: var(--v-none); }
 .graph-hint { margin: 0 0 6px; }
+.graph-info { margin: 8px 0 0; padding: 6px 10px; border-radius: 8px; background: var(--chip); white-space: pre-line; overflow-wrap: anywhere; }
 
 /* Peer path colours (categorical, fixed order; slot N = --peer-(N+1)). All lines are solid; 9-16 were picked to sit
    as far as possible (normal and colour-blind vision) from 1-8 and each other, per theme. */

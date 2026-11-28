@@ -85,6 +85,10 @@ test("pickPeers prefers new ASes, then paths not shown yet, then manifest order"
   const picked = pickPeers(g, 6).map((x) => x.peers[0]);
   assert.deepEqual(picked, ["1", "4", "5", "6", "7", "8"]); // 2 and 3 repeat peer 1's path
   assert.deepEqual(pickPeers(g.slice(0, 3), 6).length, 3); // under the cap: everyone
+  // The phone graph's 3 peers are the first 3 picks, so always among the 6 a laptop shows.
+  const three = pickPeers(g, 3).map((x) => x.peers[0]);
+  assert.deepEqual(three, ["1", "4", "5"]);
+  assert.ok(three.every((p) => picked.includes(p)));
   // Once every AS is shown, a path not shown yet still beats a repeat.
   const h = singlePeers([e("1 100 9"), e("2 100 9"), e("3 9"), e("4 100 9")]);
   // 1 first (most new ASes), then 3 (its path "9" is new), then 2 (earliest of the repeats).
