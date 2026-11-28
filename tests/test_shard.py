@@ -84,12 +84,13 @@ class ShardSourceTest(unittest.TestCase):
             src = {"name": name, "collector": "route-views.eqix", "peer_asn": 6939,
                    "as_of": "2026-11-27T16:30:00+05:30", "meta": "m.json",
                    "display_name": "Hurricane Electric", "collector_location": "Ashburn (Equinix)",
-                   "note": "Effectively a US view.",
+                   "note": "Effectively a US view.", "region": "Northern America",
                    "files": {"routes": {"asset": "r.tsv.gz"}, "paths": {"asset": "p.tsv.gz"}}}
             summary = shard.shard_source(src, work, out)
             self.assertEqual(summary["name"], name)
             self.assertEqual(summary["archive"], "routeviews")
             self.assertEqual(summary["note"], "Effectively a US view.")
+            self.assertEqual(summary["region"], "Northern America")
             self.assertEqual(summary["routes"], 1)
             self.assertTrue((out / name / "index.json").exists())
             self.assertTrue((out / name / "meta.json").exists())
@@ -113,6 +114,7 @@ class ShardSourceTest(unittest.TestCase):
             self.assertEqual(summary["display_name"], "AT&T")
             self.assertIsNone(summary["collector_location"])  # optional upstream field
             self.assertIsNone(summary["note"])
+            self.assertIsNone(summary["region"])  # optional upstream field
 
             index = json.loads((out / "t_src" / "index.json").read_text())
             self.assertEqual(index["peers"], ["12.0.1.63", "2001:1890:111d:1::63"])

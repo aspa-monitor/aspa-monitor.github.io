@@ -211,7 +211,7 @@ def shard_source(source: dict, work: Path, out: Path) -> dict:
     }
     total_bytes += _write_json(dest / "index.json", index)
 
-    archive, note = source.get("archive"), source.get("note")
+    archive, note, region = source.get("archive"), source.get("note"), source.get("region")
     meta = source.get("meta")
     if meta and (work / meta).exists():
         data = (work / meta).read_bytes()
@@ -221,6 +221,7 @@ def shard_source(source: dict, work: Path, out: Path) -> dict:
             msrc = json.loads(data).get("source") or {}
             archive = archive or msrc.get("archive")
             note = note or msrc.get("note")
+            region = region or msrc.get("region")
         except (ValueError, AttributeError):
             pass
 
@@ -235,6 +236,9 @@ def shard_source(source: dict, work: Path, out: Path) -> dict:
         "archive": archive,
         # One plain-text sentence of context about the peer (optional), shown as a tooltip.
         "note": note if isinstance(note, str) and note.strip() else None,
+        # UN M49 sub-region where the peer's network mainly operates (optional), for "Peers near you".
+        # The page ignores a value it doesn't know (site/assets/regions.js).
+        "region": region.strip() if isinstance(region, str) and region.strip() else None,
         "as_of": source["as_of"],
         "routes": index["counts"]["routes"],
         "v4": index["counts"]["v4"],

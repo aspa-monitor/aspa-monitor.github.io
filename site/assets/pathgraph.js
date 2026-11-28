@@ -11,6 +11,7 @@ import { checkRov, rovDate } from "./rov.js";
 import { pairFor, combineMarks } from "./aspapath.js";
 import { REL, relation, aspaDisagrees } from "./asrel.js";
 import { hops, groupPeers, singlePeers, pickPeers, packLines } from "./peergroups.js";
+import { SUBREGIONS, continentOf, continentText, nearGroups, saveRegion, visitorRegion } from "./regions.js";
 
 export { hops };
 export const MAX_GROUPS = 6;
@@ -127,11 +128,13 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
  * peerEntries: one per distinct path per peer, in manifest order:
  *   [{label, name (display name or null), source, prefix, path, slot, aspa (path verdict or null), split}].
  * peers "best" (default): at most MAX_GROUPS peers, each with its own box and line, chosen so their paths differ
- * as much as possible (pickPeers). peers "all": every peer, with peers whose paths match after their own AS
+ * as much as possible (pickPeers). peers "near": the same pick among peers in `region` (the visitor's UN M49
+ * sub-region; widened to its continent when it has too few peers here, see regions.js nearGroups); falls back to
+ * the best peers when none is near. peers "all": every peer, with peers whose paths match after their own AS
  * merged into one box (fresh for this search).
  */
 export function renderPathGraph(peerEntries, { width = 900, peers = "best", variant = "paths", direction = "lr",
-  controls = null, cap = MAX_GROUPS, compact = false } = {}) {
+  controls = null, cap = MAX_GROUPS, compact = false, region = null } = {}) {
   // controls: an element put above the caption (renderGraphPanel's tabs and choices).
   // variant "rel": the second map (trial) — same boxes and chips, but one line per AS pair coloured by the
   // inferred AS relationship (asrel.js), instead of one line per peer path.
@@ -139,7 +142,14 @@ export function renderPathGraph(peerEntries, { width = 900, peers = "best", vari
   peerEntries = peerEntries.filter((e) => hops(e.path).length);
   if (!peerEntries.length) return null;
   const allGroups = groupPeers(peerEntries); // distinct paths, for the counts and the ASPA tally
-  const groups = peers === "all" ? allGroups : pickPeers(singlePeers(peerEntries), cap);
+  let groups, near = null;
+  if (peers === "all") groups = allGroups;
+  else if (peers === "near") {
+    const singles = singlePeers(peerEntries);
+    const first = (g) => peerEntries[g.members[0]];
+    near = nearGroups(singles, region, (g) => first(g).region, (g) => first(g).source ?? g.peers[0]);
+    groups = pickPeers(near.groups.length ? near.groups : singles, cap);
+  } else groups = pickPeers(singlePeers(peerEntries), cap);
   // One drawn entry per group: the first member's path and colour.
   const entries = groups.map((gr) => {
     const members = gr.members.map((i) => peerEntries[i]);
@@ -154,8 +164,14 @@ export function renderPathGraph(peerEntries, { width = 900, peers = "best", vari
   const prefixes = [...new Set(entries.map((e) => e.prefix))];
   const peerCount = new Set(peerEntries.map((e) => e.source ?? e.label)).size;
   const cut = peers !== "all" && peerEntries.length > groups.length;
+  const shown = plural(groups.length, "peer");
+  const nearText = !near ? "" : near.scope === "region" ? ` (${shown} near you, in ${near.region}, shown)`
+    : near.scope === "continent" ? ` (${near.region} has ${plural(near.sources, "peer")} with a route here, so ${shown} in ` +
+      `${continentText(continentOf(near.region))} shown)`
+    : near.region ? ` (no peer in ${continentText(continentOf(near.region))} has a route here, so the ${shown} with the most different paths shown)`
+    : ` (your region is not known: pick one under Region; the ${shown} with the most different paths shown)`;
   const counts = `${plural(peerCount, "peer")}, ${plural(allGroups.length, "distinct path")}` +
-    (cut ? ` (${groups.length} peers with the most different paths shown)` : "");
+    (near ? nearText : cut ? ` (${groups.length} peers with the most different paths shown)` : "");
   const merged = entries.some((e) => e.members.length > 1);
   // ASPA path verdicts (from lookup.js; members of a group always share one, see entry.split).
   const verdictOf = (gr) => peerEntries[gr.members[0]].aspa;
@@ -539,7 +555,12 @@ function drawGraph(entries, width, variant = "paths", direction = "lr", compact 
 }
 
 const DIRS = [["lr", "Left to right"], ["tb", "Top to bottom"]];
-const peerChoices = (cap) => [["best", `${cap} best peers`], ["all", "All sources (same paths merged)"]];
+const peerChoices = (cap, withNear, region) => [["best", `${cap} best peers`],
+  ...(withNear ? [["near", `Peers near you (${region || "pick a region"})`]] : []), ["all", "All sources (same paths merged)"]];
+// Region picker: sub-regions grouped by continent.
+const regionOptions = (current) => [...new Set(Object.values(SUBREGIONS))].map((c) =>
+  `<optgroup label="${c}">${Object.keys(SUBREGIONS).filter((r) => SUBREGIONS[r] === c).map((r) =>
+    `<option value="${r}"${r === current ? " selected" : ""}>${r}</option>`).join("")}</optgroup>`).join("");
 // The layout choice is kept apart for phones (compact, Top to bottom by default) and wider screens (Left to right).
 const DIR_KEY = "graphDirection", DIR_KEY_PHONE = "graphDirectionPhone";
 
@@ -555,7 +576,10 @@ export function renderGraphPanel(entries, { width = 900, withRel = false } = {})
   const dirKey = compact ? DIR_KEY_PHONE : DIR_KEY, dirDefault = compact ? "tb" : "lr";
   let stored = dirDefault;
   try { stored = localStorage.getItem(dirKey) || dirDefault; } catch { /* storage blocked */ }
-  const state = { variant: "paths", direction: DIRS.some(([k]) => k === stored) ? stored : dirDefault, peers: "best" };
+  const state = { variant: "paths", direction: DIRS.some(([k]) => k === stored) ? stored : dirDefault, peers: "best",
+    region: visitorRegion() };
+  // "Peers near you" only once the manifest tags sources with a region (ris-routing-data "region").
+  const withNear = entries.some((e) => e.region);
   const wrap = document.createElement("div");
   wrap.className = "graph-panel";
   const draw = (focusSel) => {
@@ -564,8 +588,10 @@ export function renderGraphPanel(entries, { width = 900, withRel = false } = {})
     bar.innerHTML = (withRel ? `<div class="graph-tabs" role="tablist" aria-label="Graph">${[["paths", "AS paths"],
       ["rel", 'AS relationships <span class="tag">trial</span>']].map(([k, t]) =>
       `<button type="button" role="tab" class="graph-tab" data-v="${k}" aria-selected="${state.variant === k}">${t}</button>`).join("")}</div>` : "") +
-      `<label class="graph-peers-pick"><span class="muted small">Peers</span><select class="graph-peers-sel">${peerChoices(cap).map(([k, t]) =>
+      `<label class="graph-peers-pick"><span class="muted small">Peers</span><select class="graph-peers-sel">${peerChoices(cap, withNear, state.region).map(([k, t]) =>
         `<option value="${k}"${state.peers === k ? " selected" : ""}>${t}</option>`).join("")}</select></label>` +
+      (state.peers === "near" ? `<label class="graph-peers-pick"><span class="muted small">Region</span><select class="graph-region-sel graph-peers-sel">` +
+        `${state.region ? "" : '<option value="" selected>Pick a region</option>'}${regionOptions(state.region)}</select></label>` : "") +
       `<div class="graph-dir" role="group" aria-label="Layout"><span class="muted small">Layout</span>${DIRS.map(([k, t]) =>
         `<button type="button" class="graph-dir-btn" data-d="${k}" aria-pressed="${state.direction === k}">${t}</button>`).join("")}</div>`;
     bar.querySelectorAll(".graph-tab").forEach((b) => b.addEventListener("click", () => {
@@ -575,6 +601,10 @@ export function renderGraphPanel(entries, { width = 900, withRel = false } = {})
     bar.querySelector(".graph-peers-sel").addEventListener("change", (ev) => {
       state.peers = ev.target.value; draw(".graph-peers-sel");
     });
+    bar.querySelector(".graph-region-sel")?.addEventListener("change", (ev) => {
+      if (!ev.target.value) return;
+      state.region = ev.target.value; saveRegion(state.region); draw(".graph-region-sel");
+    });
     bar.querySelectorAll(".graph-dir-btn").forEach((b) => b.addEventListener("click", () => {
       if (state.direction === b.dataset.d) return;
       state.direction = b.dataset.d;
@@ -582,6 +612,7 @@ export function renderGraphPanel(entries, { width = 900, withRel = false } = {})
       draw(`.graph-dir-btn[data-d="${b.dataset.d}"]`);
     }));
     const fig = renderPathGraph(entries, { width, peers: state.peers, variant: state.variant, direction: state.direction,
+      region: state.region,
       controls: bar, cap, compact });
     wrap.replaceChildren(fig);
     if (focusSel) wrap.querySelector(focusSel)?.focus({ preventScroll: true });
