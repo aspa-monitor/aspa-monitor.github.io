@@ -86,7 +86,7 @@ test("graph marks: one per line, combining merged peers", () => {
   assert.equal(pairFor(r.pairs, "2", "1").mark, "ok");
   assert.equal(pairFor(r.pairs, "2", "3"), null); // direction matters
   const ok = { mark: "ok", text: "a" }, none = { mark: "none", text: "b" }, bad = { mark: "bad", text: "c" };
-  assert.deepEqual(combineMarks([ok, ok]), { mark: "ok", texts: ["a"] });
+  assert.deepEqual(combineMarks([ok, ok]), { mark: "ok", texts: ["a"], provider: null }); // no up/down given
   assert.equal(combineMarks([ok, none]).mark, "none"); // a merged box: every member must be authorised
   assert.equal(combineMarks([ok, bad, null]).mark, "bad");
   assert.equal(combineMarks([null]).mark, "none");
