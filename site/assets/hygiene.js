@@ -8,6 +8,7 @@ import { GROUPS, GROUP_ORDER, RIRS, byCountry, groupCounts, inScope, missingList
 
 const BASE = "/data/validation/hygiene/";
 const LATE_HOURS = 3;
+const DEFAULT_ASN = "148000"; // the box's example; Check with an empty box looks it up
 const RADAR = "https://radar.cloudflare.com/routing/aspa-validation?path=";
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -118,7 +119,7 @@ const REL = { provider: "provider", peer: "peer", customer: "customer", unknown:
 async function showCard(asn) {
   const out = $("#hygiene-card");
   if (!/^\d+$/.test(asn) || Number(asn) < 1 || Number(asn) > 4294967295) {
-    out.innerHTML = '<p class="error">Enter an AS number, for example 141476.</p>';
+    out.innerHTML = '<p class="error">Enter an AS number, for example 148000.</p>';
     return;
   }
   out.innerHTML = `<p class="muted">Looking up AS${esc(asn)}…</p>`;
@@ -172,7 +173,8 @@ async function showCard(asn) {
 
 $("#hygiene-form").addEventListener("submit", (e) => {
   e.preventDefault();
-  const asn = $("#h-asn").value.trim().replace(/^as/i, "");
+  const asn = $("#h-asn").value.trim().replace(/^as/i, "") || DEFAULT_ASN;
+  $("#h-asn").value = asn; // show what was looked up (the default too)
   history.replaceState(null, "", `#asn=${asn}`);
   showCard(asn);
 });

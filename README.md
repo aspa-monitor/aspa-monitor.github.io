@@ -70,7 +70,7 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   computed by [aspa-validation](https://github.com/aspa-monitor/aspa-validation) (`hygiene.json.gz`; the page computes
   nothing new). A registry choice (APNIC by default, the others, or all) and a country choice give counts per group
   and per country, and the list of ASes whose ASPA does not list an observed provider (strong and partial evidence
-  first; weak, seen by few feeds, listed apart). "Check an AS" shows one AS: its upstreams (CAIDA relationship, in the
+  first; weak, seen by few feeds, listed apart). "Check an AS" (AS148000 when the box is empty) shows one AS: its upstreams (CAIDA relationship, in the
   ASPA or not, share of routes, feeds, evidence, "observed on <date> via AS Y, not in ASPA") and its ASPA providers
   (seen or not). The CAIDA citation is printed as CAIDA's terms require. Data: `pipeline/validation.py` ->
   `data/validation/hygiene/summary.json` (lists and counts) and `asn/<asn % 100>.json` (one entry per AS); code
