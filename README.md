@@ -56,7 +56,7 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   for 7 days. If RIPEstat fails or has no name, the page uses the site's own copy of RIPE NCC's
   [asn.txt](https://ftp.ripe.net/ripe/asnames/asn.txt) (all RIRs), shown in italics and cached for 1 day.
 - `/aspa/` — ASPA statistics, interim: fetched live in the browser from the free [BGPKIT API](https://bgpkit.com/api)
-  (`site/assets/aspa.js`, client in `site/assets/bgpkit.js`; ASes with ASPA, the day's path verdicts in BGPKIT's five buckets, daily trend, top invalid
+  (`site/assets/aspa.js`, client in `site/assets/bgpkit.js`; ASes with ASPA, the day's path verdicts in BGPKIT's five buckets, top invalid
   customer/provider pairs, and the ASPA of any AS). Replaced by this project's own verdicts once aspa-validation
   publishes them.
   The "Top invalid customer / provider pairs" list has a Customer AS from choice: India (default), AP region or World,
@@ -64,7 +64,10 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   20 shown with "Show all" (`site/assets/pairregions.js`). It lists every pair from this portal's own feeds, computed
   hourly by aspa-validation (`pipeline/validation.py` -> `data/validation/invalid_pairs.json`; only side "origin",
   where the customer sent the route to a provider its ASPA doesn't list; regions from the customer's country and
-  registry in that file). If that file is missing, it falls back to BGPKIT's top 200 pairs for the day with regions
+  registry in that file). With our own data each row expands: clicking "Invalid paths" lists the AS paths behind the
+  pair (the customer -> provider hop highlighted, routes, feeds) and clicking "Routes" lists every route (prefix, linked to
+  /lookup/, feed, path), 50 rows then "Show all" (aspa-validation's invalid_pair_details.json.gz -> `data/validation/pairs/
+  <customer % 100>.json`, used only when it matches the pairs file and aspa-validation reports no mismatch). If that file is missing, it falls back to BGPKIT's top 200 pairs for the day with regions
   from APNIC's delegated statistics (`pipeline/asregions.py` -> `data/asregions/apnic.json`).
 - `/hygiene/` — ASPA hygiene: each published ASPA compared hourly with the upstreams seen in this portal's feeds,
   computed by [aspa-validation](https://github.com/aspa-monitor/aspa-validation) (`hygiene.json.gz`; the page computes
@@ -108,6 +111,7 @@ manifest.json                 sources, upstream generated_at / as_of, build time
 ../asregions/apnic.json       APNIC-delegated ASNs per economy {"cc": {"IN": [[first ASN, count], ...]}} (interim, /aspa/ pairs choice)
 ../validation/invalid_pairs.json  this portal's own invalid ASPA pairs (aspa-validation, side "origin"), compact rows + "fields"
 ../validation/hygiene/         summary.json (rows + missing providers) and asn/<asn % 100>.json (full aspa-validation entries)
+../validation/pairs/<n>.json    per-pair AS paths and routes for /aspa/'s expandable rows (customer % 100)
 ```
 ASPAs (interim, until rpki-aspa-data publishes its own): `pipeline.aspa` downloads Cloudflare's public rpki-client output
 (`rpki.cloudflare.com/rpki.json`, all five RIRs), keeps only the ASPAs (about 4,400 customers, 130 kB) and drops expired

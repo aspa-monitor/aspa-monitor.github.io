@@ -78,5 +78,32 @@ class TestHygiene(unittest.TestCase):
             self.assertEqual(len(list((out / "hygiene" / "asn").glob("*.json"))), 100)
 
 
+class TestPairDetails(unittest.TestCase):
+    PAIRS = {"as_of": "2026-11-28T20:45:00+05:30",
+             "pairs": [[58717, 153759, 2, 3, 1, None, "BD", "apnic"], [153292, 140148, 1, 1, 1, None, "IN", "apnic"]]}
+    RAW = {"schema_version": 1, "as_of": "2026-11-28T20:45:00+05:30", "side": "origin", "pairs": {
+        "58717-153759": {"paths": [{"path": "151704 153759 58717 24342", "routes": 2, "feeds": ["route-views8_AS151704"]},
+                                   {"path": "151704 153759 58717", "routes": 1, "feeds": ["route-views8_AS151704"]}],
+                         "routes": [["115.127.0.0/17", "route-views8_AS151704", 0], ["115.127.0.0/18", "route-views8_AS151704", 0],
+                                    ["103.1.0.0/24", "route-views8_AS151704", 1]]},
+        "153292-140148": {"paths": [{"path": "174 140148 153292", "routes": 1, "feeds": ["route-views8_AS174"]}],
+                          "routes": [["1.2.3.0/24", "route-views8_AS174", 0]]}}}
+
+    def test_sharded_by_customer_and_checked_against_pairs(self):
+        b = validation.details_docs(self.RAW, self.PAIRS, 0)
+        self.assertEqual(sorted(b), [17, 92])
+        self.assertEqual(b[17]["pairs"]["58717-153759"]["paths"][0], ["151704 153759 58717 24342", 2, ["route-views8_AS151704"]])
+        self.assertEqual(len(b[92]["pairs"]["153292-140148"]["routes"]), 1)
+
+    def test_refused_when_mismatched_or_not_matching_the_pairs(self):
+        with self.assertRaises(ValueError):
+            validation.details_docs(self.RAW, self.PAIRS, 1)  # aspa-validation's own check failed
+        with self.assertRaises(ValueError):
+            validation.details_docs(self.RAW, {**self.PAIRS, "as_of": "2026-11-28T19:45:00+05:30"}, 0)  # other run
+        with self.assertRaises(ValueError):
+            bad = {"as_of": self.PAIRS["as_of"], "pairs": [[58717, 153759, 5, 3, 1, None, "BD", "apnic"]]}
+            validation.details_docs(self.RAW, bad, 0)  # counts differ
+
+
 if __name__ == "__main__":
     unittest.main()

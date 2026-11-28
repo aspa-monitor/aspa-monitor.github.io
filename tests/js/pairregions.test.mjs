@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { regionIndex, pairsIn, ownPairs, OWN_INDEX, PAIR_REGIONS } from "../../site/assets/pairregions.js";
+import { regionIndex, pairsIn, ownPairs, OWN_INDEX, PAIR_REGIONS, markHop, detailsKey } from "../../site/assets/pairregions.js";
 
 const doc = { cc: { IN: [[9583, 3], [133000, 10]], JP: [[173, 1]], AU: [[1221, 1]] } };
 const row = (customer_asn) => ({ customer_asn });
@@ -47,4 +47,14 @@ test("ownPairs reads the portal's own file; regions come from the customer's cou
   assert.deepEqual(pairsIn(own, "world", OWN_INDEX).map((r) => r.customer_asn), [58717, 207841, 153292]); // tie: routes
   assert.equal(ownPairs({ schema_version: 2, fields: [], pairs: [] }), null);
   assert.equal(ownPairs(null), null);
+});
+
+test("markHop marks the customer -> provider hop (provider directly left of the customer)", () => {
+  const hops = markHop("151704 153759 58717 24342", 58717, 153759);
+  assert.deepEqual(hops.map((h) => h.hop), [false, true, true, false]);
+  assert.deepEqual(markHop("7018 174 140148 153292", 153292, 140148).map((h) => h.hop), [false, false, true, true]);
+  // Customer not directly after the provider (should not happen): nothing marked rather than a wrong hop.
+  assert.deepEqual(markHop("1 2 3", 3, 1).map((h) => h.hop), [false, false, false]);
+  assert.deepEqual(markHop("", 1, 2), []);
+  assert.deepEqual(detailsKey(58717, 153759), { shard: 17, key: "58717-153759" });
 });

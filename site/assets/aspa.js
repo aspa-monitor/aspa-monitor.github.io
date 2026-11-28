@@ -2,7 +2,8 @@
 // until aspa-validation publishes this site's own verdicts (client and 30-minute cache in bgpkit.js).
 import { fillNames } from "./asnames.js";
 import { api } from "./bgpkit.js";
-import { OWN_INDEX, PAIR_REGIONS, PAIRS_SHOWN, ownPairs, pairsIn, regionIndex } from "./pairregions.js";
+import { DETAIL_ROWS, OWN_INDEX, PAIR_REGIONS, PAIRS_SHOWN, detailsKey, markHop, ownPairs, pairsIn, regionIndex }
+  from "./pairregions.js";
 import { formatIST } from "./timefmt.js";
 
 const RADAR = "https://radar.cloudflare.com/routing/aspa-validation?path=";
@@ -66,56 +67,94 @@ function renderVerdicts(day) {
     "Observations" count each path once per peer that saw it.</p>`;
 }
 
-/** Small line chart (one series) with a hover/tap crosshair and tooltip. */
-function lineChart(el, points, { format, yFormat, tone }) {
-  if (!points.length) { el.innerHTML = '<p class="muted">No data.</p>'; return; }
-  const W = 560, H = 210, L = 56, R = 14, T = 12, B = 28;
-  const ys = points.map((p) => p.y);
-  let lo = Math.min(...ys), hi = Math.max(...ys);
-  const padY = (hi - lo) * 0.15 || hi * 0.1 || 1;
-  lo = Math.max(0, lo - padY); hi += padY;
-  const x = (i) => L + (i / Math.max(1, points.length - 1)) * (W - L - R);
-  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
-  const ticks = [0, 1, 2, 3].map((k) => lo + (k / 3) * (hi - lo));
-  const d = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.y).toFixed(1)}`).join(" ");
-  const xLabels = [0, Math.floor((points.length - 1) / 2), points.length - 1];
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="linechart" role="img" aria-label="${esc(el.dataset.label || "")}">
-    ${ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>
-      <text class="axis" x="${L - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${esc(yFormat(v))}</text>`).join("")}
-    ${xLabels.map((i) => `<text class="axis" x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"}">${esc(fmtDate(points[i].d))}</text>`).join("")}
-    <path class="line ${tone}" d="${d}"/>
-    <line class="cross" y1="${T}" y2="${H - B}" visibility="hidden"/>
-    <circle class="dotm ${tone}" r="4.5" visibility="hidden"/>
-    <rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}"/>
-  </svg><div class="tip" hidden></div>`;
-  const svg = el.querySelector("svg"), tip = el.querySelector(".tip");
-  const cross = svg.querySelector(".cross"), dot = svg.querySelector(".dotm");
-  const show = (evt) => {
-    const box = svg.getBoundingClientRect();
-    const px = ((evt.clientX - box.left) / box.width) * W;
-    const i = Math.max(0, Math.min(points.length - 1, Math.round(((px - L) / (W - L - R)) * (points.length - 1))));
-    const p = points[i];
-    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
-    dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(p.y)); dot.setAttribute("visibility", "visible");
-    tip.hidden = false;
-    tip.innerHTML = `<strong>${esc(format(p))}</strong><br><span class="muted">${esc(fmtDate(p.d))}</span>`;
-    const left = (x(i) / W) * box.width;
-    tip.style.left = `${Math.min(Math.max(left, 60), box.width - 60)}px`;
-  };
-  const hide = () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); };
-  const hit = svg.querySelector(".hit");
-  hit.addEventListener("pointermove", show);
-  hit.addEventListener("pointerdown", show);
-  hit.addEventListener("pointerleave", hide);
+// ---------- pair details (own data only) ----------
+
+const detailCache = new Map(); // shard -> Promise of {as_of, pairs}
+let feedNames = null; // source name -> "AT&T (AS7018)", from the RIS manifest
+
+function loadShard(shard) {
+  if (!detailCache.has(shard)) {
+    detailCache.set(shard, fetch(`/data/validation/pairs/${shard}.json`).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }));
+  }
+  return detailCache.get(shard).catch((e) => { detailCache.delete(shard); throw e; });
 }
 
-function renderTrend(series) {
-  const days = series.series;
-  lineChart($("#trend-evidence"), days.map((d) => ({ d: d.snapshot_date, y: 1 - bucket(d, "no_aspa_evidence").path_share })),
-    { tone: "full", yFormat: (v) => pct(v, 1), format: (p) => `${pct(p.y, 2)} of paths` });
-  lineChart($("#trend-invalid"), days.map((d) => ({ d: d.snapshot_date, y: bucket(d, "definitely_invalid").paths, share: bucket(d, "definitely_invalid").path_share })),
-    { tone: "invalid", yFormat: (v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v))), format: (p) => `${int(p.y)} paths (${small(p.share)})` });
+async function loadFeedNames() {
+  if (feedNames) return feedNames;
+  feedNames = {};
+  try {
+    const m = await (await fetch("/data/ris/manifest.json")).json();
+    for (const s of m.sources || []) feedNames[s.name] = s.display_name ? `${s.display_name} (AS${s.peer_asn})` : s.name;
+  } catch { /* raw source names then */ }
+  return feedNames;
 }
+const feedLabel = (f) => esc(feedNames?.[f] || f);
+
+function pathHtml(path, c, p) {
+  return `<span class="aspath">${markHop(path, c, p).map((h) =>
+    `<span class="${h.hop ? "hop" : ""}">${esc(h.asn)}</span>`).join(" ")}</span>`;
+}
+
+function detailTable(d, view, c, p, all) {
+  const more = (n) => (n > DETAIL_ROWS ? `<p><button type="button" class="detail-more" data-c="${esc(c)}" data-p="${esc(p)}"
+    data-view="${view}" data-all="${all ? "" : "1"}">${all ? `Show the first ${DETAIL_ROWS}` : `Show all ${int(n)}`}</button></p>` : "");
+  if (view === "paths") {
+    const rows = all ? d.paths : d.paths.slice(0, DETAIL_ROWS);
+    return `<div class="detail-scroll"><table class="list detail"><thead><tr><th>AS path (collector peer first, origin last)</th><th class="num">Routes</th><th>Feeds</th></tr></thead>
+      <tbody>${rows.map(([path, routes, feeds]) => `<tr><td data-label="AS path">${pathHtml(path, c, p)}</td><td class="num" data-label="Routes">${int(routes)}</td>
+        <td data-label="Feeds">${feeds.map(feedLabel).join(", ")}</td></tr>`).join("")}</tbody></table></div>${more(d.paths.length)}`;
+  }
+  const rows = all ? d.routes : d.routes.slice(0, DETAIL_ROWS);
+  return `<div class="detail-scroll"><table class="list detail"><thead><tr><th>Prefix</th><th>Feed</th><th>AS path</th></tr></thead>
+    <tbody>${rows.map(([prefix, feed, i]) => `<tr><td data-label="Prefix"><a href="/lookup/?q=${encodeURIComponent(prefix)}&amp;source=${encodeURIComponent(feed)}">${esc(prefix)}</a></td>
+      <td data-label="Feed">${feedLabel(feed)}</td><td data-label="AS path">${pathHtml(d.paths[i]?.[0], c, p)}</td></tr>`).join("")}</tbody></table></div>${more(d.routes.length)}`;
+}
+
+/** Open (or switch, or close) the details row under a pair's row. */
+async function showDetails(btn, all = false) {
+  const { c, p, view } = btn.dataset;
+  const tr = btn.closest("tbody").querySelector(`tr[data-pair="${c}-${p}"]`);
+  let row = tr.nextElementSibling?.classList.contains("pair-detail") ? tr.nextElementSibling : null;
+  const buttons = tr.querySelectorAll(".pair-open");
+  if (row && row.dataset.view === view && btn.classList.contains("pair-open")) { // same number again: close
+    row.remove();
+    buttons.forEach((b) => b.setAttribute("aria-expanded", "false"));
+    return;
+  }
+  if (!row) {
+    row = document.createElement("tr");
+    row.className = "pair-detail";
+    row.innerHTML = `<td colspan="${tr.children.length}"></td>`;
+    tr.after(row);
+  }
+  row.dataset.view = view;
+  buttons.forEach((b) => b.setAttribute("aria-expanded", String(b.dataset.view === view)));
+  const cell = row.firstElementChild;
+  cell.innerHTML = '<p class="muted small">Loading…</p>';
+  try {
+    const { shard, key } = detailsKey(c, p);
+    const [doc] = await Promise.all([loadShard(shard), loadFeedNames()]);
+    const d = doc.pairs[key];
+    if (!d) { cell.innerHTML = '<p class="muted">No details for this pair in this hour\'s data.</p>'; return; }
+    const title = view === "paths" ? `${int(d.paths.length)} invalid AS path${d.paths.length === 1 ? "" : "s"}`
+      : `${int(d.routes.length)} route${d.routes.length === 1 ? "" : "s"} (each prefix seen by each feed)`;
+    cell.innerHTML = `<p class="small"><strong>${title}</strong> behind AS${esc(c)} → AS${esc(p)}.
+      <span class="muted">The highlighted hop is where AS${esc(c)} sent the route to AS${esc(p)}, which its ASPA does not list.</span></p>
+      ${detailTable(d, view, c, p, all)}`;
+  } catch (e) {
+    cell.innerHTML = `<p class="error">Could not load the details (${esc(e.message)}). Try again in a minute.</p>`;
+  }
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest(".pair-open, .detail-more");
+  if (!b) return;
+  e.preventDefault();
+  showDetails(b, b.classList.contains("detail-more") && b.dataset.all === "1");
+});
 
 // Invalid pairs, with an India / AP region / World choice on the customer AS. Main source: every pair from this
 // portal's own RIS and RouteViews feeds (aspa-validation, data/validation/invalid_pairs.json). Fallback when that
@@ -126,11 +165,14 @@ try { pairsState.region = localStorage.getItem(REGION_KEY) || "IN"; } catch { /*
 
 function pairsTable(rows, own) {
   const extra = own ? ["Routes", "Feeds"] : ["Observations"];
-  return `<table class="list stack"><thead><tr><th>Customer AS</th><th>Provider AS seen</th>
+  // Own data: the Invalid paths and Routes numbers open the pair's details (detailsRow) under the row.
+  const open = (r, view, n) => `<button type="button" class="pair-open" data-c="${esc(r.customer_asn)}" data-p="${esc(r.provider_asn)}"
+    data-view="${view}" aria-expanded="false" title="Show the ${view === "paths" ? "invalid AS paths" : "routes"} behind this pair">${int(n)} <span aria-hidden="true">▸</span></button>`;
+  return `<table class="list stack pairs-table"><thead><tr><th>Customer AS</th><th>Provider AS seen</th>
     <th class="num">Invalid paths</th>${extra.map((h) => `<th class="num">${h}</th>`).join("")}<th>Check</th></tr></thead><tbody>${rows.map((r) =>
-    `<tr><td data-label="Customer">${asChip(r.customer_asn)}</td><td data-label="Provider">${asChip(r.provider_asn)}</td>
-      <td class="num" data-label="Invalid paths">${int(r.invalid_paths)}</td>
-      ${own ? `<td class="num" data-label="Routes">${int(r.routes)}</td><td class="num" data-label="Feeds"
+    `<tr data-pair="${esc(r.customer_asn)}-${esc(r.provider_asn)}"><td data-label="Customer">${asChip(r.customer_asn)}</td><td data-label="Provider">${asChip(r.provider_asn)}</td>
+      <td class="num" data-label="Invalid paths">${own ? open(r, "paths", r.invalid_paths) : int(r.invalid_paths)}</td>
+      ${own ? `<td class="num" data-label="Routes">${open(r, "routes", r.routes)}</td><td class="num" data-label="Feeds"
         title="feeds that saw at least one of these invalid paths">${int(r.feeds)} of ${int(pairsState.ownDoc.feeds_total)}</td>`
         : `<td class="num" data-label="Observations">${int(r.invalid_observations)}</td>`}
       <td data-label="Check"><a href="#asn=${esc(r.customer_asn)}" class="show-aspa" data-asn="${esc(r.customer_asn)}">ASPA</a> ·
@@ -250,18 +292,16 @@ document.addEventListener("click", (e) => {
   const status = $("#aspa-status");
   const hashAsn = (location.hash.match(/asn=(\d+)/) || [])[1];
   if (hashAsn) { $("#asn").value = hashAsn; showAspa(hashAsn); }
-  const [summary, counts, series, pairs] = await Promise.allSettled([
-    api("summary"), api("aspa/verdict-counts"), api("aspa/verdict-series?days=400"), api("aspa/invalid-pairs?limit=200"), loadPairs(),
+  const [summary, counts, pairs] = await Promise.allSettled([
+    api("summary"), api("aspa/verdict-counts"), api("aspa/invalid-pairs?limit=200"), loadPairs(),
   ]);
-  const failed = [summary, counts, series, pairs].filter((r) => r.status === "rejected");
+  const failed = [summary, counts, pairs].filter((r) => r.status === "rejected");
   if (counts.status === "fulfilled" && summary.status === "fulfilled") renderTiles(summary.value, counts.value);
   if (counts.status === "fulfilled") renderVerdicts(counts.value);
   else $("#verdicts").innerHTML = '<p class="error">Path verdicts are not available right now.</p>';
-  if (series.status === "fulfilled") renderTrend(series.value);
-  else for (const id of ["#trend-evidence", "#trend-invalid"]) $(id).innerHTML = '<p class="error">Not available right now.</p>';
   if (pairs.status === "fulfilled") pairsState.bgpkit = pairs.value;
   renderPairs(); // this portal's own pairs, or BGPKIT's when ours did not load
-  if (failed.length === 4) {
+  if (failed.length === 3) {
     status.className = "banner stale";
     status.textContent = `BGPKIT did not answer (${failed[0].reason.message}). The ASPA statistics will be back when it does.`;
   } else {

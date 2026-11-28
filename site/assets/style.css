@@ -397,23 +397,6 @@ h1.hero {
 .bar-fill.full, .dot.full { background: var(--v-full); }
 .bar-fill.valid, .dot.valid { background: var(--v-valid); }
 .bar-fill.invalid, .dot.invalid { background: var(--v-invalid); }
-.trend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
-.chart-card { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
-.chart-card figcaption { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
-.chart { position: relative; }
-.linechart { width: 100%; height: auto; display: block; touch-action: pan-y; }
-.linechart .grid { stroke: var(--line); stroke-width: 1; }
-.linechart .axis { fill: var(--muted); font-size: 11px; font-family: var(--sans); }
-.linechart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.linechart .line.full { stroke: var(--v-full); }
-.linechart .line.invalid { stroke: var(--v-invalid); }
-.linechart .dotm { stroke: var(--card); stroke-width: 2; }
-.linechart .dotm.full { fill: var(--v-full); }
-.linechart .dotm.invalid { fill: var(--v-invalid); }
-.linechart .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
-.linechart .hit { fill: transparent; cursor: crosshair; }
-.chart .tip { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; white-space: nowrap;
-  background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; font-size: 0.82em; box-shadow: var(--shadow); }
 .aspa-lookup { max-width: 520px; }
 .aspa-lookup .field { flex: 1 1 200px; }
 .aspa-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); margin-top: 10px; }
@@ -482,3 +465,24 @@ table.list tr.h-not td { background: var(--warn-soft); }
 .h-weak { margin-top: 14px; }
 .h-weak summary { cursor: pointer; font-weight: 650; }
 .h-method p { max-width: 72ch; }
+
+/* /aspa/ pair details */
+.pair-open { font: inherit; font-variant-numeric: tabular-nums; cursor: pointer; background: none; border: 1px solid var(--chip-line);
+  color: var(--accent); border-radius: 8px; padding: 1px 8px; }
+.pair-open:hover { border-color: var(--accent); box-shadow: none; }
+.pair-open[aria-expanded="true"] { background: var(--accent-soft); }
+.pair-open[aria-expanded="true"] span { display: inline-block; transform: rotate(90deg); }
+table.list tr.pair-detail > td { background: var(--card-2); padding: 10px 14px 14px; }
+table.list tr.pair-detail:hover > td { background: var(--card-2); }
+table.list.detail { font-size: 0.9em; }
+table.list.detail td:first-child { font-family: var(--mono); }
+.aspath { font-family: var(--mono); overflow-wrap: anywhere; }
+.aspath .hop { background: var(--warn-soft); color: var(--warn); font-weight: 700; border-radius: 4px; padding: 0 3px; }
+.detail-scroll { overflow-x: auto; width: 100%; }
+table.list tr.pair-detail > td { font-family: var(--sans); }
+@media (max-width: 640px) {
+  table.list.stack tr.pair-detail > td { display: block; }
+  table.list.stack tr.pair-detail > td::before { content: none; }
+  table.list.stack tr.pair-detail table thead { display: none; }
+  table.list.stack tr.pair-detail table tr { padding: 8px 4px; }
+}

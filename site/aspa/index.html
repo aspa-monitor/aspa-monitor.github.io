@@ -45,18 +45,6 @@
     </section>
 
     <section>
-      <h2>Daily trend</h2>
-      <div class="trend-grid">
-        <figure class="chart-card"><figcaption><strong>Paths with ASPA evidence</strong>
-          <span class="muted small">share of the day's paths where at least one hop is covered by ASPA</span></figcaption>
-          <div id="trend-evidence" class="chart"></div></figure>
-        <figure class="chart-card"><figcaption><strong>Definitely invalid paths</strong>
-          <span class="muted small">paths that contradict a published ASPA (a lower bound, not a leak rate)</span></figcaption>
-          <div id="trend-invalid" class="chart"></div></figure>
-      </div>
-    </section>
-
-    <section>
       <h2>Top invalid customer / provider pairs</h2>
       <p class="muted small">The customer AS's ASPA does not list the provider it sent the route to, and that hop
         breaks ASPA for the path. This can be a route leak, or an ASPA that is missing a provider. Counted over every

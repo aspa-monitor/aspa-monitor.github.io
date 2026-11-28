@@ -52,3 +52,18 @@ export function pairsIn(rows, region, index) {
   const second = (r) => r.routes ?? r.invalid_observations ?? 0;
   return [...keep].sort((a, b) => b.invalid_paths - a.invalid_paths || second(b) - second(a));
 }
+
+export const DETAIL_ROWS = 50; // rows of a details table shown before "Show all"
+
+/**
+ * An AS path ("peer ... origin", as aspa-validation verified it) split into hops, marking the customer -> provider
+ * hop where the path breaks ASPA: the provider is the AS directly left of the customer.
+ */
+export function markHop(path, customer, provider) {
+  const asns = String(path || "").split(/\s+/).filter(Boolean);
+  const c = asns.findIndex((a, i) => i > 0 && a === String(customer) && asns[i - 1] === String(provider));
+  return asns.map((asn, i) => ({ asn, hop: c >= 0 && (i === c || i === c - 1) }));
+}
+
+/** Shard file and key for a pair's details (data/validation/pairs/<customer % 100>.json). */
+export const detailsKey = (customer, provider) => ({ shard: Number(customer) % 100, key: `${customer}-${provider}` });
