@@ -3,7 +3,7 @@ import { loadManifest, lookup, MAX_LOAD_FILES, sourceLabel, collectorLabel, site
 import { FLAG_INFO, splitList } from "./flags.js";
 import { fillNames } from "./asnames.js";
 import { formatIST, formatUnixIST, ago } from "./timefmt.js";
-import { renderGraphPanel } from "./pathgraph.js";
+import { renderGraphPanel, peerColour } from "./pathgraph.js";
 import { rovSlot, fillRov } from "./rov.js";
 import { loadAspas, verifyPath, VERDICT_LABEL } from "./aspapath.js";
 import { hops } from "./peergroups.js";
@@ -188,6 +188,52 @@ function renderSource(res, q, src, multi, aspa) {
   </section>`;
 }
 
+// ---------- per-peer results: one card, one tab per peer ----------
+
+let activePeer = null; // the peer tab last chosen; kept across searches and "Load them" while that peer is shown
+
+const peerShort = (src) => src.display_name || `${src.collector} · AS${src.peer_asn}`;
+
+function peerTabs(done) {
+  const names = done.map((d) => d.src.name);
+  const active = names.includes(activePeer) ? activePeer : names[0];
+  const tabs = done.map(({ src, res, error }) => {
+    const none = error || !res || !res.match;
+    const id = `peer-tab-${src.name.replace(/[^\w-]/g, "_")}`;
+    const tip = `${sourceLabel(src)} · ${collectorLabel(src)}${error ? " · could not load" : none ? " · no route" : ""}`;
+    return `<button type="button" role="tab" class="peer-tab${none ? " none" : ""}" id="${esc(id)}" data-source="${esc(src.name)}"
+      aria-selected="${src.name === active}" tabindex="${src.name === active ? 0 : -1}" title="${esc(tip)}">` +
+      `<i class="swatch" style="--sw:${peerColour(Number.isInteger(src.colour) ? src.colour : manifest.sources.indexOf(src))}"></i>` +
+      `${esc(peerShort(src))}</button>`;
+  }).join("");
+  const panels = done.map(({ src, html }) => html.replace('<section class="source-result"',
+    `<section class="source-result" role="tabpanel"${src.name === active ? "" : " hidden"}`)).join("");
+  return `<div class="peer-card"><p class="peer-card-title"><strong>Routes per peer</strong>
+    <span class="muted small">${done.length} peers; pick one.</span></p>
+    <div class="peer-tabs" role="tablist" aria-label="Peer">${tabs}</div>${panels}</div>`;
+}
+
+function showPeer(name, focus = false) {
+  activePeer = name;
+  for (const t of results.querySelectorAll(".peer-tab")) {
+    const on = t.dataset.source === name;
+    t.setAttribute("aria-selected", on);
+    t.tabIndex = on ? 0 : -1;
+    if (on && focus) t.focus();
+  }
+  for (const p of results.querySelectorAll(".peer-card .source-result")) p.hidden = p.dataset.source !== name;
+  revealTab();
+}
+
+/** Phones show the tabs in one sideways-scrolling row: keep the chosen tab in view (without moving the page). */
+function revealTab() {
+  const row = results.querySelector(".peer-tabs"), t = row?.querySelector('[aria-selected="true"]');
+  if (!t || row.scrollWidth <= row.clientWidth) return;
+  const left = t.offsetLeft - row.offsetLeft, right = left + t.offsetWidth;
+  if (left < row.scrollLeft) row.scrollLeft = left - 8;
+  else if (right > row.scrollLeft + row.clientWidth) row.scrollLeft = right - row.clientWidth + 8;
+}
+
 // ---------- state & flow ----------
 
 function setBanner() {
@@ -253,11 +299,12 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
       const aspa = await aspaP;
       return { src, res, html: renderSource(res, q, src, multi, aspa) };
     } catch (e) {
-      return { src, html: `<section class="source-result">${multi ? `<h2>${esc(sourceLabel(src))}</h2>` : ""}<p class="error">Could not load data: ${esc(e.message)}</p></section>` };
+      return { src, error: true, html: `<section class="source-result" data-source="${esc(src.name)}">${multi ? `<h2>${esc(sourceLabel(src))}</h2>` : ""}<p class="error">Could not load data: ${esc(e.message)}</p></section>` };
     }
   }));
   results.innerHTML = `${note}<p class="muted">Results for ${esc(qlabel)}.</p>${skippedNote}<div class="graph-slot"></div>` +
-    done.map((d) => d.html).join("");
+    (multi ? peerTabs(done) : done.map((d) => d.html).join(""));
+  revealTab();
   fillNames(results);
   fillRov(results);
 
@@ -310,6 +357,8 @@ form.addEventListener("submit", (e) => {
 });
 
 results.addEventListener("click", (e) => {
+  const tab = e.target.closest(".peer-tab");
+  if (tab) { showPeer(tab.dataset.source); return; }
   const btn = e.target.closest(".load-more");
   if (btn) {
     btn.disabled = true;
@@ -325,6 +374,17 @@ results.addEventListener("click", (e) => {
     go(p.get("q"), p.get("source") || select.value);
     window.scrollTo({ top: 0 });
   }
+});
+
+results.addEventListener("keydown", (e) => {
+  const tab = e.target.closest(".peer-tab");
+  if (!tab || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+  const tabs = [...results.querySelectorAll(".peer-tab")];
+  const i = tabs.indexOf(tab);
+  const j = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1
+    : (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+  e.preventDefault();
+  showPeer(tabs[j].dataset.source, true);
 });
 
 document.querySelectorAll(".example").forEach((a) => a.addEventListener("click", (e) => {

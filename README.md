@@ -22,7 +22,7 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   6 peers, each with its own box and line, picked so their paths differ as much as possible (`pickPeers` in
   `site/assets/peergroups.js`). The card's Peers choice "All sources" draws every peer instead, and peers whose paths
   are the same after their own AS then share one box and one set of lines (the first peer's colour), worked out
-  fresh for every search. The per-peer route sections below always list every peer. Graph boxes show the organisation
+  fresh for every search. Below it, one "Routes per peer" card has a tab per peer (one sideways row on phones); each tab holds that peer's full route section. Graph boxes show the organisation
   part of an AS name ("AT&T Enterprises, LLC" from "ATT-INTERNET4 - AT&T Enterprises, LLC"; full name in the tooltip),
   and the origin box carries the same RPKI ROV verdict as the route cards, outlined green (valid), red (invalid) or
   grey (not found). AS numbers are plain chips, not links.

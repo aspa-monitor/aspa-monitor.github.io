@@ -432,3 +432,22 @@ table.list td .asn .asname { font-family: var(--sans); }
 .graph-peers-pick { display: flex; align-items: center; gap: 6px; }
 .graph-peers-sel { font: inherit; font-size: 0.85em; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--chip-line);
   background: var(--card-2); color: var(--fg); max-width: 100%; }
+
+/* Lookup: per-peer results in one card, one tab per peer. */
+.peer-card { margin: 18px 0 8px; padding: 16px 18px; background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow); }
+.peer-card-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 10px; }
+.peer-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.peer-tab { font: inherit; font-size: 0.85em; cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+  background: var(--card-2); color: var(--fg); border: 1px solid var(--chip-line); border-radius: 999px;
+  padding: 5px 12px; box-shadow: none; white-space: nowrap; }
+.peer-tab:hover { border-color: var(--accent); box-shadow: none; }
+.peer-tab[aria-selected="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--accent); }
+.peer-tab.none { color: var(--muted); }
+.peer-tab .swatch { width: 14px; height: 0; border-top: 3px solid var(--sw); border-radius: 2px; }
+.peer-card .source-result { margin-top: 14px; }
+/* Phones: one row of tabs that scrolls sideways instead of many rows. */
+@media (max-width: 699px) {
+  .peer-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+}
