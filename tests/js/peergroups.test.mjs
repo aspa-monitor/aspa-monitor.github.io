@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hops, groupPeers, pickGroups, packLines, groupAses, singlePeers, pickPeers } from "../../site/assets/peergroups.js";
+import { hops, groupPeers, pickGroups, packLines, groupAses, singlePeers, pickPeers, TIER1 } from "../../site/assets/peergroups.js";
 
 const P = "1.10.10.0/24";
 const e = (path, prefix = P) => ({ prefix, path });
@@ -93,4 +93,27 @@ test("pickPeers prefers new ASes, then paths not shown yet, then manifest order"
   const h = singlePeers([e("1 100 9"), e("2 100 9"), e("3 9"), e("4 100 9")]);
   // 1 first (most new ASes), then 3 (its path "9" is new), then 2 (earliest of the repeats).
   assert.deepEqual(pickPeers(h, 3).map((x) => x.peers[0]), ["1", "2", "3"]);
+});
+
+test("pickPeers prefers Tier 1 peers but keeps the most different paths", () => {
+  assert.ok(TIER1.has("7018") && TIER1.has("174") && !TIER1.has("1221"));
+  const g = singlePeers([
+    e("1221 4637 4826 9"), // regional, longest path
+    e("7018 3356 9"), // Tier 1
+    e("3333 1299 9"),
+    e("174 9"), // Tier 1, adds nothing new once 9 is shown
+    e("4608 6939 9"),
+  ]);
+  // First pick is the best Tier 1 path (7018), even though 1221's path adds more ASes; then the most new ASes.
+  const three = pickPeers(g, 3).map((x) => x.peers[0]);
+  assert.deepEqual(three, ["7018", "1221", "3333"]); // Tier 1 first, then manifest order
+  // New ASes still come before Tier 1: 4608 adds 6939, the Tier 1 peer 174 adds nothing new.
+  assert.deepEqual(pickPeers(g, 4).map((x) => x.peers[0]), ["7018", "1221", "3333", "4608"]);
+  // Under the cap: everyone, Tier 1 first.
+  assert.deepEqual(pickPeers(g, 6).map((x) => x.peers[0]), ["7018", "174", "1221", "3333", "4608"]);
+  // Equal gain after the first pick: the Tier 1 peer (174) wins over the earlier 3333.
+  const h = singlePeers([e("7018 1 9"), e("3333 2 9"), e("174 3 9")]);
+  assert.deepEqual(pickPeers(h, 2).map((x) => x.peers[0]), ["7018", "174"]);
+  // No Tier 1 peer at all: unchanged behaviour.
+  assert.deepEqual(pickPeers(singlePeers([e("1 5 9"), e("2 6 7 9"), e("3 5 9")]), 2).map((x) => x.peers[0]), ["1", "2"]);
 });

@@ -186,7 +186,7 @@ export function renderPathGraph(peerEntries, { width = 900, peers = "best", vari
     <div class="graph-legend small muted">${rel ? Object.entries(REL).map(([k, r]) =>
       `<span><b class="relkey ${k}">${r.glyph}</b>${esc(r.name)}</span>`).join("") +
       '<span><b class="relkey flag">!</b>disagrees with ASPA</span></div>' : `
-      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>${hasMarks ? `<span><b class="pm bad">✗</b>pair that breaks ASPA</span><span><b class="pm ok wide">${direction === "tb" ? "✓↓" : "✓→"}</b>authorised pair; the arrow points at the provider</span>` : ""}
+      <span><i class="dot peer"></i>peer</span><span><i class="dot transit"></i>transit</span><span><i class="dot origin"></i>origin AS</span><span>origin outline, RPKI ROV:</span><span><i class="dot rov valid"></i>valid</span><span><i class="dot rov invalid"></i>invalid</span><span><i class="dot rov none"></i>not found</span>${hasMarks ? `<span><b class="pm bad">✗</b>pair that breaks ASPA</span><span><b class="pm ok wide">${direction === "tb" ? "↑✓" : "←✓"}</b>authorised pair: route goes up to a provider (the arrow points at the provider)</span><span><b class="pm ok wide">${direction === "tb" ? "✓↓" : "✓→"}</b>authorised pair: route comes down from a provider to its customer</span>` : ""}
     </div>`}`;
   fig.querySelector(".graph-scroll").appendChild(svg);
   if (controls) fig.prepend(controls);

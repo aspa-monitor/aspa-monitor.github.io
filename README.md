@@ -20,7 +20,9 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   An AS path graph draws the peers' paths to the matched prefix (`site/assets/pathgraph.js`); peers that send
   no routes of the queried family (e.g. IPv4-only peers) are left out. By default ("6 best peers") it draws at most
   6 peers, each with its own box and line, picked so their paths differ as much as possible (`pickPeers` in
-  `site/assets/peergroups.js`). The card's Peers choice "All sources" draws every peer instead, and peers whose paths
+  `site/assets/peergroups.js`), preferring Tier 1 peers (`TIER1`, a fixed list): the first pick is the best Tier 1
+  path, ties go to Tier 1, and Tier 1 peers are listed first. A Tier 1 peer buys no transit, so its path only climbs
+  and every ASPA arrow on it points towards the peer; other peers keep the regional views. The card's Peers choice "All sources" draws every peer instead, and peers whose paths
   are the same after their own AS then share one box and one set of lines (the first peer's colour), worked out
   fresh for every search. On a narrow card (phones; graph under 600 px wide) the graph is compact: the 3 best peers (the first 3 picks,
   so always among the 6 a laptop shows), boxes with the AS number only and a short ROV pill (ROV ✓ / ✗ / –), and

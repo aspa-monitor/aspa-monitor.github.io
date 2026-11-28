@@ -81,33 +81,51 @@ export function singlePeers(entries) {
 }
 
 /**
- * The default graph: at most `cap` single peers, chosen so the paths shown are as different as possible.
- * Each next pick is the peer whose path (after its own AS) adds the most ASes not shown yet; ties go to a path
- * not shown yet (so two peers with the same path are only both picked when nothing new is left), then to
- * manifest order. Returned in their original order.
+ * Tier 1 (transit-free) networks: they buy no transit, so a path from one of them only climbs from the origin
+ * and every ASPA arrow on it points towards the peer. A fixed list, since no registry publishes one.
+ */
+export const TIER1 = new Set(["174", "701", "1299", "2914", "3257", "3320", "3356", "3491", "3549", "5511",
+  "6453", "6461", "6762", "6830", "7018", "12956"]);
+const isTier1 = (g) => TIER1.has(g.peers[0]);
+
+/** a > b, comparing scores element by element (the first difference decides). */
+const beats = (a, b) => {
+  for (let j = 0; j < a.length; j++) if (a[j] !== b[j]) return a[j] > b[j];
+  return false;
+};
+
+/** Tier 1 peers first, each part in its original (manifest) order. */
+const tier1First = (list) => [...list.filter(isTier1), ...list.filter((g) => !isTier1(g))];
+
+/**
+ * The default graph: at most `cap` single peers, chosen so the paths shown are as different as possible,
+ * preferring Tier 1 peers. The first pick is the Tier 1 peer whose path adds the most ASes (if any Tier 1 peer
+ * has a route). Each next pick is the peer whose path (after its own AS) adds the most ASes not shown yet; ties
+ * go to a path not shown yet (so two peers with the same path are only both picked when nothing new is left),
+ * then to a Tier 1 peer, then to manifest order. Returned Tier 1 peers first, each part in manifest order.
  */
 export function pickPeers(groups, cap = 6) {
-  if (groups.length <= cap) return groups.slice();
+  if (groups.length <= cap) return tier1First(groups);
   const shown = new Set(), paths = new Set();
   const key = (g) => `${g.prefix}|${g.tail.join(" ")}`;
   const left = groups.map((g, i) => ({ g, i }));
   const picked = [];
   while (picked.length < cap && left.length) {
     let best = 0, bestScore = null;
+    const firstTier1 = !picked.length && left.some((c) => isTier1(c.g));
     left.forEach((c, k) => {
+      if (firstTier1 && !isTier1(c.g)) return;
       let gain = 0;
       for (const a of c.g.tail) if (!shown.has(a)) gain++;
-      const score = [gain, paths.has(key(c.g)) ? 0 : 1];
-      if (!bestScore || score[0] > bestScore[0] || (score[0] === bestScore[0] && score[1] > bestScore[1])) {
-        best = k; bestScore = score;
-      }
+      const score = [gain, paths.has(key(c.g)) ? 0 : 1, isTier1(c.g) ? 1 : 0];
+      if (!bestScore || beats(score, bestScore)) { best = k; bestScore = score; }
     });
     const [c] = left.splice(best, 1);
     for (const a of c.g.tail) shown.add(a);
     paths.add(key(c.g));
     picked.push(c);
   }
-  return picked.sort((a, b) => a.i - b.i).map((c) => c.g);
+  return tier1First(picked.sort((a, b) => a.i - b.i).map((c) => c.g));
 }
 
 /** Pack tokens into lines of at most `max` characters, joined by " + " (a token longer than max gets its own line). */
