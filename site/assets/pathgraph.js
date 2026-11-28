@@ -1,6 +1,6 @@
 // AS path graph: the paths every peer uses to reach a prefix, merged into one picture.
 // Peers sit on one side, the origin AS on the other; an AS that several paths share is drawn once.
-// Each peer's path has its own colour (fixed per peer: manifest "colour", kept across builds); where paths share a hop
+// Each drawn peer's path has its own colour (handed out per drawing, in drawing order: colourSlots); where paths share a hop
 // their lines run side by side. Pointing at (or tapping) a peer chip or box highlights that one path.
 // Peers whose paths are identical after their own AS are merged into one box and one set of lines for this
 // search (peergroups.js) when the reader picks "All sources"; by default at most MAX_GROUPS single peers are drawn.
@@ -10,7 +10,7 @@ import { asName, shortName } from "./asnames.js";
 import { checkRov, rovDate } from "./rov.js";
 import { pairFor, combineMarks } from "./aspapath.js";
 import { REL, relation, aspaDisagrees } from "./asrel.js";
-import { hops, groupPeers, singlePeers, pickPeers, packLines } from "./peergroups.js";
+import { hops, groupPeers, singlePeers, pickPeers, packLines, colourSlots } from "./peergroups.js";
 import { SUBREGIONS, continentOf, continentText, nearGroups, saveRegion, visitorRegion } from "./regions.js";
 
 export { hops };
@@ -19,7 +19,8 @@ export const MAX_GROUPS_PHONE = 3;
 export const COMPACT_W = 600; // graph width (px) below which the compact phone graph is drawn
 
 const SVG = "http://www.w3.org/2000/svg";
-// 16 colours (style.css --peer-1 .. --peer-16), all solid lines; slots beyond 15 share a neutral grey.
+// 16 colours (style.css --peer-1 .. --peer-16), all solid lines; slots beyond 15 (only under "All sources" with
+// more than 16 drawn peers) share a neutral grey.
 const SLOTS = 16;
 export const peerColour = (slot) => (slot != null && slot < SLOTS ? `var(--peer-${slot + 1})` : "var(--muted)");
 const ROV_LINE = 17; // extra height of an origin box for its ROV badge
@@ -121,6 +122,22 @@ function fit(text, max) {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
+/**
+ * Put text in an SVG <text> so it ends inside the box: first cut to maxChars (an average-width guess), then,
+ * once the browser can measure it, drop more letters until it is at most maxPx wide. Capitals and wide letters
+ * ("TATA COMMUNICATIONS (AMERICA)") are wider than the guess, which used to push the "…" past the box edge.
+ */
+function setFitted(textEl, text, maxChars, maxPx) {
+  textEl.textContent = fit(text, maxChars);
+  let n = Math.min(text.length, maxChars);
+  try {
+    while (n > 2 && textEl.getComputedTextLength() > maxPx) {
+      n--;
+      textEl.textContent = `${text.slice(0, n - 1).trimEnd()}…`;
+    }
+  } catch { /* not measurable (not in the page yet): keep the guess */ }
+}
+
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
@@ -134,7 +151,8 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
  * merged into one box (fresh for this search).
  */
 export function renderPathGraph(peerEntries, { width = 900, peers = "best", variant = "paths", direction = "lr",
-  controls = null, cap = MAX_GROUPS, compact = false, region = null } = {}) {
+  controls = null, cap = MAX_GROUPS, compact = false, region = null, onColours = null } = {}) {
+  // onColours(Map source -> slot): told which colour each drawn peer got, so the page can match its peer tabs.
   // controls: an element put above the caption (renderGraphPanel's tabs and choices).
   // variant "rel": the second map (trial) — same boxes and chips, but one line per AS pair coloured by the
   // inferred AS relationship (asrel.js), instead of one line per peer path.
@@ -150,12 +168,15 @@ export function renderPathGraph(peerEntries, { width = 900, peers = "best", vari
     near = nearGroups(singles, region, (g) => first(g).region, (g) => first(g).source ?? g.peers[0]);
     groups = pickPeers(near.groups.length ? near.groups : singles, cap);
   } else groups = pickPeers(singlePeers(peerEntries), cap);
-  // One drawn entry per group: the first member's path and colour.
+  // One drawn entry per group: the first member's path and colour. Colours go to the drawn peers only, in order.
+  const keyOf = (m) => m.source ?? m.label;
+  const colours = colourSlots(groups.flatMap((gr) => gr.members.map((i) => keyOf(peerEntries[i]))));
   const entries = groups.map((gr) => {
-    const members = gr.members.map((i) => peerEntries[i]);
+    const members = gr.members.map((i) => ({ ...peerEntries[i], slot: colours.get(keyOf(peerEntries[i])) }));
     return { prefix: gr.prefix, path: gr.path, peers: gr.peers, members, slot: members[0].slot,
       label: members.map((m) => m.label).join(" + ") };
   });
+  onColours?.(colours);
   const svg = drawGraph(entries, width, variant, direction, compact);
   const hasMarks = entries.some((e) => (e.members || []).some((m) => m.aspaPairs));
 
@@ -526,7 +547,7 @@ function drawGraph(entries, width, variant = "paths", direction = "lr", compact 
         const named = members.find((mb) => mb.name && hops(mb.path)[0] === p);
         return named ? named.name : shortName((await asName(Number(p))).name) || `AS${p}`;
       })).then((names) => {
-        if (nameEl) nameEl.textContent = fit(names.join(" + "), nameMax);
+        if (nameEl) setFitted(nameEl, names.join(" + "), nameMax, bw - tx - 8);
         tip.textContent = `${asList}: ${names.join(" + ")} · peers with the same path${noteText}`;
       });
       continue;
@@ -546,7 +567,7 @@ function drawGraph(entries, width, variant = "paths", direction = "lr", compact 
     } else {
       asName(Number(asn)).then(({ name }) => {
         if (!name) return;
-        if (nameEl) nameEl.textContent = fit(shortName(name), nameMax); // full "HANDLE - Organisation" in the tooltip
+        if (nameEl) setFitted(nameEl, shortName(name), nameMax, bw - tx - 8); // full "HANDLE - Organisation" in the tooltip
         tip.textContent = `AS${asn} ${name} · ${role}${noteText}`;
       });
     }
@@ -570,7 +591,7 @@ const DIR_KEY = "graphDirection", DIR_KEY_PHONE = "graphDirectionPhone";
  * localStorage). The choices carry over between tabs. Below COMPACT_W the graph is the compact phone one:
  * the best MAX_GROUPS_PHONE peers, AS numbers only, Top to bottom by default.
  */
-export function renderGraphPanel(entries, { width = 900, withRel = false } = {}) {
+export function renderGraphPanel(entries, { width = 900, withRel = false, onColours = null } = {}) {
   const compact = width < COMPACT_W;
   const cap = compact ? MAX_GROUPS_PHONE : MAX_GROUPS;
   const dirKey = compact ? DIR_KEY_PHONE : DIR_KEY, dirDefault = compact ? "tb" : "lr";
@@ -613,7 +634,7 @@ export function renderGraphPanel(entries, { width = 900, withRel = false } = {})
     }));
     const fig = renderPathGraph(entries, { width, peers: state.peers, variant: state.variant, direction: state.direction,
       region: state.region,
-      controls: bar, cap, compact });
+      controls: bar, cap, compact, onColours });
     wrap.replaceChildren(fig);
     if (focusSel) wrap.querySelector(focusSel)?.focus({ preventScroll: true });
   };

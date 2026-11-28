@@ -28,7 +28,10 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   (`site/assets/regions.js`). The visitor's region comes from the browser's timezone (nothing is sent anywhere);
   a Region picker changes it and is remembered in the browser. The card's Peers choice "All sources" draws every peer instead, and peers whose paths
   are the same after their own AS then share one box and one set of lines (the first peer's colour), worked out
-  fresh for every search. On a narrow card (phones; graph under 600 px wide) the graph is compact: the 3 best peers (the first 3 picks,
+  fresh for every search. Colours are handed out per search to the peers actually drawn, in drawing order
+  (`colourSlots` in `peergroups.js`; 16 solid colours, so a drawing of up to 6 peers never runs out), so a peer can
+  have a different colour on different searches; its tab in "Routes per peer" takes the same colour, and peers not
+  drawn show no swatch. On a narrow card (phones; graph under 600 px wide) the graph is compact: the 3 best peers (the first 3 picks,
   so always among the 6 a laptop shows), boxes with the AS number only and a short ROV pill (ROV ✓ / ✗ / –), and
   Top to bottom by default (the phone and laptop layout choices are remembered separately). Tapping a box or line
   mark writes its name or verdict in a line under the graph, since tooltips don't show on touch. Below it, one "Routes per peer" card has a tab per peer (one sideways row on phones); each tab holds that peer's full route section. Graph boxes show the organisation

@@ -128,6 +128,17 @@ export function pickPeers(groups, cap = 6) {
   return tier1First(picked.sort((a, b) => a.i - b.i).map((c) => c.g));
 }
 
+/**
+ * Colours for one drawing: the peers actually drawn get slots 0, 1, 2, ... in drawing order (keys are source
+ * names; a source drawn twice keeps its first slot). Colours are handed out per search, not fixed per peer, so a
+ * graph (at most 6 peers, or every peer under "All sources") never runs out while the 16 colours cover it.
+ */
+export function colourSlots(keys) {
+  const out = new Map();
+  for (const k of keys) if (!out.has(k)) out.set(k, out.size);
+  return out;
+}
+
 /** Pack tokens into lines of at most `max` characters, joined by " + " (a token longer than max gets its own line). */
 export function packLines(tokens, max) {
   const lines = [];

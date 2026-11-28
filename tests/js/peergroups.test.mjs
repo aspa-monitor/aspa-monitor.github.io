@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hops, groupPeers, pickGroups, packLines, groupAses, singlePeers, pickPeers, TIER1 } from "../../site/assets/peergroups.js";
+import { hops, groupPeers, pickGroups, packLines, groupAses, singlePeers, pickPeers, TIER1, colourSlots } from "../../site/assets/peergroups.js";
 
 const P = "1.10.10.0/24";
 const e = (path, prefix = P) => ({ prefix, path });
@@ -116,4 +116,13 @@ test("pickPeers prefers Tier 1 peers but keeps the most different paths", () => 
   assert.deepEqual(pickPeers(h, 2).map((x) => x.peers[0]), ["7018", "174"]);
   // No Tier 1 peer at all: unchanged behaviour.
   assert.deepEqual(pickPeers(singlePeers([e("1 5 9"), e("2 6 7 9"), e("3 5 9")]), 2).map((x) => x.peers[0]), ["1", "2"]);
+});
+
+test("colourSlots: drawn peers get colours in drawing order, a peer drawn twice keeps its first", () => {
+  const c = colourSlots(["rrc00_AS7018", "rrc23_AS3491", "rrc00_AS7018", "rrc03_AS3320"]);
+  assert.deepEqual([...c.entries()], [["rrc00_AS7018", 0], ["rrc23_AS3491", 1], ["rrc03_AS3320", 2]]);
+  // Any number of sources: the 17th drawn peer is slot 16 (grey in peerColour), never a clash.
+  const many = colourSlots(Array.from({ length: 17 }, (_, i) => `s${i}`));
+  assert.equal(many.get("s16"), 16);
+  assert.equal(new Set(many.values()).size, 17);
 });

@@ -203,7 +203,7 @@ function peerTabs(done) {
     const tip = `${sourceLabel(src)} · ${collectorLabel(src)}${error ? " · could not load" : none ? " · no route" : ""}`;
     return `<button type="button" role="tab" class="peer-tab${none ? " none" : ""}" id="${esc(id)}" data-source="${esc(src.name)}"
       aria-selected="${src.name === active}" tabindex="${src.name === active ? 0 : -1}" title="${esc(tip)}">` +
-      `<i class="swatch" style="--sw:${peerColour(Number.isInteger(src.colour) ? src.colour : manifest.sources.indexOf(src))}"></i>` +
+      `<i class="swatch" style="--sw:transparent"></i>` + // coloured once the graph says who it drew (tabColours)
       `${esc(peerShort(src))}</button>`;
   }).join("");
   const panels = done.map(({ src, html }) => html.replace('<section class="source-result"',
@@ -211,6 +211,14 @@ function peerTabs(done) {
   return `<div class="peer-card"><p class="peer-card-title"><strong>Routes per peer</strong>
     <span class="muted small">${done.length} peers; pick one.</span></p>
     <div class="peer-tabs" role="tablist" aria-label="Peer">${tabs}</div>${panels}</div>`;
+}
+
+/** Peer tabs take the colour the graph gave each peer it drew this time; peers not drawn show no swatch. */
+function tabColours(colours) {
+  for (const t of results.querySelectorAll(".peer-tab")) {
+    const slot = colours.get(t.dataset.source);
+    t.querySelector(".swatch")?.style.setProperty("--sw", slot == null ? "transparent" : peerColour(slot));
+  }
 }
 
 function showPeer(name, focus = false) {
@@ -321,14 +329,13 @@ async function run(text, sourceName, { loadAllFor = null, missingSource = null }
       const verdict = aspaOf(r, aspa)?.verdict ?? null;
       // split: peers whose ASPA verdicts differ are never merged into one box (their first pair differs).
       entries.push({ label: sourceLabel(src), name: src.display_name || null, note: src.note || null, region: src.region || null, source: src.name, prefix: res.match.prefix, path: r.path,
-        aspa: verdict, split: verdict, aspaPairs: aspaOf(r, aspa)?.pairs ?? null,
-        slot: Number.isInteger(src.colour) ? src.colour : manifest.sources.indexOf(src) });
+        aspa: verdict, split: verdict, aspaPairs: aspaOf(r, aspa)?.pairs ?? null });
     }
   }
   const slot = results.querySelector(".graph-slot");
   const gw = (slot.clientWidth || results.clientWidth || 940) - 52;
   // Tabs: the path graph, and (trial) the same paths with lines coloured by inferred AS relationship (asrel.js).
-  const graph = entries.length ? renderGraphPanel(entries, { width: gw, withRel: SHOW_REL_MAP }) : null;
+  const graph = entries.length ? renderGraphPanel(entries, { width: gw, withRel: SHOW_REL_MAP, onColours: tabColours }) : null;
   if (graph) slot.replaceWith(graph); else slot.remove();
 }
 
