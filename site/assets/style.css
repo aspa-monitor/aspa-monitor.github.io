@@ -203,6 +203,9 @@ table.list .asn { flex-direction: row; gap: 6px; align-items: baseline; padding:
 table.list .asn { flex-wrap: wrap; column-gap: 6px; row-gap: 0; }
 table.list .asname { overflow-wrap: break-word; min-width: 0; }
 table.list td.when { white-space: nowrap; }
+.pairs-pick { display: inline-flex; align-items: center; gap: 8px; margin: 2px 0 12px; }
+.pairs-pick select { font: inherit; font-size: 0.9em; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--chip-line);
+  background: var(--card); color: var(--fg); }
 /* Phones: each prefix row becomes a small card of label / value lines. */
 @media (max-width: 640px) {
   table.list.stack thead { display: none; }

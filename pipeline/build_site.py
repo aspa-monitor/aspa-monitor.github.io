@@ -11,7 +11,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from pipeline import asnames, aspa
+from pipeline import asnames, aspa, asregions, validation
 from pipeline.ris import fetch, shard
 from pipeline.timefmt import IST, now_ist, parse_iso
 
@@ -89,6 +89,8 @@ def main(argv=None) -> int:
     ap.add_argument("--ris-work", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--asnames", type=Path, help="RIPE asn.txt for backup AS names (optional)")
+    ap.add_argument("--validation", type=Path, help="work dir of `pipeline.validation download` (optional)")
+    ap.add_argument("--asregions", type=Path, help="APNIC delegated stats for /aspa/'s India / AP region choice (optional)")
     ap.add_argument("--aspa", type=Path, help="ASPAs from `pipeline.aspa download` (optional: falls back to the live file)")
     ap.add_argument("--live-aspa-url", default=os.environ.get("LIVE_ASPA_URL", ""),
                     help="live site's data/aspa/aspas.json, reused when the fresh ASPA download is unusable")
@@ -105,6 +107,8 @@ def main(argv=None) -> int:
     if args.asnames:
         asnames.build(args.asnames, args.out / "data" / "asnames")
     aspa.build(args.aspa, args.out / "data" / "aspa", args.live_aspa_url)
+    asregions.build(args.asregions, args.out / "data" / "asregions")
+    validation.build(args.validation, args.out / "data" / "validation")
 
     total_mb = dir_bytes(args.out) / 1e6
     print(f"site total: {total_mb:.1f} MB (budget {args.budget_mb} MB, Pages limit {PAGES_LIMIT_MB} MB)")

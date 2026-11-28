@@ -58,8 +58,9 @@
 
     <section>
       <h2>Top invalid customer / provider pairs</h2>
-      <p class="muted small">The customer AS's ASPA does not list the provider that appears above it in the path.
-        This can be a route leak, or an ASPA that is missing a provider.</p>
+      <p class="muted small">The customer AS's ASPA does not list the provider it sent the route to, and that hop
+        breaks ASPA for the path. This can be a route leak, or an ASPA that is missing a provider. Counted over every
+        path in this portal's own RIS and RouteViews feeds, refreshed hourly.</p>
       <div id="pairs"></div>
     </section>
 

@@ -59,6 +59,13 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   (`site/assets/aspa.js`, client in `site/assets/bgpkit.js`; ASes with ASPA, the day's path verdicts in BGPKIT's five buckets, daily trend, top invalid
   customer/provider pairs, and the ASPA of any AS). Replaced by this project's own verdicts once aspa-validation
   publishes them.
+  The "Top invalid customer / provider pairs" list has a Customer AS from choice: India (default), AP region or World,
+  on the customer AS (the network that published the ASPA; the provider can be anywhere), most invalid paths first,
+  20 shown with "Show all" (`site/assets/pairregions.js`). It lists every pair from this portal's own feeds, computed
+  hourly by aspa-validation (`pipeline/validation.py` -> `data/validation/invalid_pairs.json`; only side "origin",
+  where the customer sent the route to a provider its ASPA doesn't list; regions from the customer's country and
+  registry in that file). If that file is missing, it falls back to BGPKIT's top 200 pairs for the day with regions
+  from APNIC's delegated statistics (`pipeline/asregions.py` -> `data/asregions/apnic.json`).
 - Logo: the "No Detour" road sign of the GitHub organisation (a route leak is a detour; ASPA rules it out). `site/favicon.svg`
   is the small mark (diamond and up arrow; also the header mark), `site/assets/logo.svg` the full sign on the home page
   (letters drawn as strokes, no font), with PNG copies for phones (`site/apple-touch-icon.png`, 180 px) and link
@@ -89,6 +96,8 @@ manifest.json                 sources, upstream generated_at / as_of, build time
 <source>/v4/<id>.json.gz      one address block, gzip-compressed JSON (the page decompresses it); v6/ likewise
 ../asnames/<asn % 100>.json   backup AS names {"<asn>": "<name>"}, rebuilt every deploy (step skipped if asn.txt fails)
 ../aspa/aspas.json            validated ASPAs {"aspas": {"<customer AS>": [provider AS, ...]}, source_time, built, counts}
+../asregions/apnic.json       APNIC-delegated ASNs per economy {"cc": {"IN": [[first ASN, count], ...]}} (interim, /aspa/ pairs choice)
+../validation/invalid_pairs.json  this portal's own invalid ASPA pairs (aspa-validation, side "origin"), compact rows + "fields"
 ```
 ASPAs (interim, until rpki-aspa-data publishes its own): `pipeline.aspa` downloads Cloudflare's public rpki-client output
 (`rpki.cloudflare.com/rpki.json`, all five RIRs), keeps only the ASPAs (about 4,400 customers, 130 kB) and drops expired

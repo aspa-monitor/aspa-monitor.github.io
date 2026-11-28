@@ -2,6 +2,8 @@
 // until aspa-validation publishes this site's own verdicts (client and 30-minute cache in bgpkit.js).
 import { fillNames } from "./asnames.js";
 import { api } from "./bgpkit.js";
+import { OWN_INDEX, PAIR_REGIONS, PAIRS_SHOWN, ownPairs, pairsIn, regionIndex } from "./pairregions.js";
+import { formatIST } from "./timefmt.js";
 
 const RADAR = "https://radar.cloudflare.com/routing/aspa-validation?path=";
 
@@ -115,20 +117,83 @@ function renderTrend(series) {
     { tone: "invalid", yFormat: (v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v))), format: (p) => `${int(p.y)} paths (${small(p.share)})` });
 }
 
-function renderPairs(pairs) {
-  const rows = pairs.culprits || [];
-  if (!rows.length) { $("#pairs").innerHTML = '<p class="muted">None on this day.</p>'; return; }
-  $("#pairs").innerHTML = `<table class="list stack"><thead><tr><th>Customer AS</th><th>Provider AS seen</th>
-    <th class="num">Invalid paths</th><th class="num">Observations</th><th>Check</th></tr></thead><tbody>${rows.map((r) =>
+// Invalid pairs, with an India / AP region / World choice on the customer AS. Main source: every pair from this
+// portal's own RIS and RouteViews feeds (aspa-validation, data/validation/invalid_pairs.json). Fallback when that
+// file is missing: BGPKIT's top 200 worldwide for the day, with regions from APNIC's delegated statistics.
+const REGION_KEY = "aspaPairsRegion";
+const pairsState = { own: null, ownDoc: null, bgpkit: null, index: null, apnicDate: null, region: "IN", all: false };
+try { pairsState.region = localStorage.getItem(REGION_KEY) || "IN"; } catch { /* storage blocked */ }
+
+function pairsTable(rows, own) {
+  const extra = own ? ["Routes", "Feeds"] : ["Observations"];
+  return `<table class="list stack"><thead><tr><th>Customer AS</th><th>Provider AS seen</th>
+    <th class="num">Invalid paths</th>${extra.map((h) => `<th class="num">${h}</th>`).join("")}<th>Check</th></tr></thead><tbody>${rows.map((r) =>
     `<tr><td data-label="Customer">${asChip(r.customer_asn)}</td><td data-label="Provider">${asChip(r.provider_asn)}</td>
       <td class="num" data-label="Invalid paths">${int(r.invalid_paths)}</td>
-      <td class="num" data-label="Observations">${int(r.invalid_observations)}</td>
+      ${own ? `<td class="num" data-label="Routes">${int(r.routes)}</td><td class="num" data-label="Feeds"
+        title="feeds that saw at least one of these invalid paths">${int(r.feeds)} of ${int(pairsState.ownDoc.feeds_total)}</td>`
+        : `<td class="num" data-label="Observations">${int(r.invalid_observations)}</td>`}
       <td data-label="Check"><a href="#asn=${esc(r.customer_asn)}" class="show-aspa" data-asn="${esc(r.customer_asn)}">ASPA</a> ·
         <a href="${RADAR}${esc(r.provider_asn)}-${esc(r.customer_asn)}" target="_blank" rel="noopener">Radar</a></td></tr>`).join("")}
-    </tbody></table>
-    <p class="muted small">Day ${esc(fmtDate(pairs.snapshot_date))}, ordered by invalid observations. "Radar" checks the
-      two-hop path on Cloudflare Radar's ASPA validator.</p>`;
+    </tbody></table>`;
+}
+
+function renderPairs() {
+  const own = !!pairsState.own;
+  if (!own && !pairsState.bgpkit) { $("#pairs").innerHTML = '<p class="error">Not available right now.</p>'; return; }
+  const index = own ? OWN_INDEX : pairsState.index;
+  const all = own ? pairsState.own : pairsState.bgpkit.culprits || [];
+  const choices = index ? PAIR_REGIONS : PAIR_REGIONS.filter(([k]) => k === "world");
+  if (!choices.some(([k]) => k === pairsState.region)) pairsState.region = choices[0][0];
+  const region = pairsState.region, label = PAIR_REGIONS.find(([k]) => k === region)[1];
+  const rows = pairsIn(all, region, index);
+  const shown = pairsState.all ? rows : rows.slice(0, PAIRS_SHOWN);
+  const picker = `<label class="pairs-pick"><span class="muted small">Customer AS from</span><select id="pairs-region">${choices.map(([k, t]) =>
+    `<option value="${k}"${k === region ? " selected" : ""}>${t}</option>`).join("")}</select></label>`;
+  const where = region === "IN" ? " with a customer AS registered in India" : region === "AP" ? " with a customer AS delegated by APNIC" : "";
+  let about;
+  if (own) {
+    const d = pairsState.ownDoc;
+    about = `${int(rows.length)} pairs${where}, from every path in this portal's ${int(d.feeds_total)} RIS and RouteViews feeds ` +
+      `(${int(d.paths_verified)} paths verified), routing data as of ${esc(formatIST(new Date(d.as_of)))}; most invalid paths first. ` +
+      "A pair is listed where the customer sent the route to a provider its ASPA doesn't list, and that is where the path " +
+      "breaks ASPA. \"Routes\" counts each prefix seen by each feed.";
+  } else {
+    about = `${int(rows.length)} of BGPKIT's top ${int(all.length)} pairs worldwide for ${esc(fmtDate(pairsState.bgpkit.snapshot_date))}${where}, ` +
+      "ordered by invalid paths. This portal's own list did not load, so these are BGPKIT's." +
+      (region !== "world" && pairsState.apnicDate ? ` Regions from APNIC's delegated statistics of ${esc(pairsState.apnicDate)}.` : "") +
+      (index ? "" : " (The region list did not load either, so only World is offered.)");
+  }
+  const table = !rows.length ? `<p class="muted">No invalid pair has a customer AS from ${esc(label)}${own ? " in this hour's data" : ` in BGPKIT's top ${int(all.length)} for this day`}.</p>`
+    : pairsTable(shown, own) + (rows.length > PAIRS_SHOWN ? `<p><button type="button" class="pairs-more">${pairsState.all
+      ? `Show the top ${PAIRS_SHOWN}` : `Show all ${int(rows.length)}`}</button></p>` : "");
+  $("#pairs").innerHTML = `${picker}${table}<p class="muted small">${about} "Radar" checks the two-hop path on Cloudflare Radar's ASPA validator.</p>`;
+  $("#pairs-region").addEventListener("change", (e) => {
+    pairsState.region = e.target.value; pairsState.all = false;
+    try { localStorage.setItem(REGION_KEY, pairsState.region); } catch { /* storage blocked */ }
+    renderPairs();
+  });
+  $("#pairs .pairs-more")?.addEventListener("click", () => { pairsState.all = !pairsState.all; renderPairs(); });
   fillNames($("#pairs"));
+}
+
+async function getJson(url) {
+  try {
+    const r = await fetch(url);
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+/** This portal's own pairs; else (fallback) APNIC regions for BGPKIT's list. */
+async function loadPairs() {
+  const doc = await getJson("/data/validation/invalid_pairs.json");
+  const own = ownPairs(doc);
+  if (own) { pairsState.own = own; pairsState.ownDoc = doc; return; }
+  const apnic = await getJson("/data/asregions/apnic.json");
+  pairsState.index = regionIndex(apnic);
+  if (apnic && /^\d{8}$/.test(apnic.date || "")) {
+    pairsState.apnicDate = fmtDate(`${apnic.date.slice(0, 4)}-${apnic.date.slice(4, 6)}-${apnic.date.slice(6)}`);
+  }
 }
 
 async function showAspa(asn) {
@@ -186,7 +251,7 @@ document.addEventListener("click", (e) => {
   const hashAsn = (location.hash.match(/asn=(\d+)/) || [])[1];
   if (hashAsn) { $("#asn").value = hashAsn; showAspa(hashAsn); }
   const [summary, counts, series, pairs] = await Promise.allSettled([
-    api("summary"), api("aspa/verdict-counts"), api("aspa/verdict-series?days=400"), api("aspa/invalid-pairs?limit=20"),
+    api("summary"), api("aspa/verdict-counts"), api("aspa/verdict-series?days=400"), api("aspa/invalid-pairs?limit=200"), loadPairs(),
   ]);
   const failed = [summary, counts, series, pairs].filter((r) => r.status === "rejected");
   if (counts.status === "fulfilled" && summary.status === "fulfilled") renderTiles(summary.value, counts.value);
@@ -194,8 +259,8 @@ document.addEventListener("click", (e) => {
   else $("#verdicts").innerHTML = '<p class="error">Path verdicts are not available right now.</p>';
   if (series.status === "fulfilled") renderTrend(series.value);
   else for (const id of ["#trend-evidence", "#trend-invalid"]) $(id).innerHTML = '<p class="error">Not available right now.</p>';
-  if (pairs.status === "fulfilled") renderPairs(pairs.value);
-  else $("#pairs").innerHTML = '<p class="error">Not available right now.</p>';
+  if (pairs.status === "fulfilled") pairsState.bgpkit = pairs.value;
+  renderPairs(); // this portal's own pairs, or BGPKIT's when ours did not load
   if (failed.length === 4) {
     status.className = "banner stale";
     status.textContent = `BGPKIT did not answer (${failed[0].reason.message}). The ASPA statistics will be back when it does.`;
