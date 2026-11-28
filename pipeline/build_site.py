@@ -109,6 +109,7 @@ def main(argv=None) -> int:
     aspa.build(args.aspa, args.out / "data" / "aspa", args.live_aspa_url)
     asregions.build(args.asregions, args.out / "data" / "asregions")
     validation.build(args.validation, args.out / "data" / "validation")
+    validation.build_hygiene(args.validation, args.out / "data" / "validation")
 
     total_mb = dir_bytes(args.out) / 1e6
     print(f"site total: {total_mb:.1f} MB (budget {args.budget_mb} MB, Pages limit {PAGES_LIMIT_MB} MB)")

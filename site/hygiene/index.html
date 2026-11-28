@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASPA hygiene · ASPA Monitor</title>
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="description" content="ASPA hygiene: each published ASPA compared hourly with the upstreams seen in BGP from RIPE RIS and RouteViews feeds, by registry and country, with a check for any AS number. Developed by Gaurav Kansal.">
+  <link rel="canonical" href="https://aspa-monitor.gauravkansal.in/hygiene/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ASPA Monitor">
+  <meta property="og:title" content="ASPA hygiene · ASPA Monitor">
+  <meta property="og:description" content="ASPA hygiene: each published ASPA compared hourly with the upstreams seen in BGP from RIPE RIS and RouteViews feeds, by registry and country, with a check for any AS number. Developed by Gaurav Kansal.">
+  <meta property="og:url" content="https://aspa-monitor.gauravkansal.in/hygiene/">
+  <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="https://aspa-monitor.gauravkansal.in/assets/logo-512.png">
+  <meta property="og:image:alt" content="ASPA Monitor logo: a yellow road sign with an up arrow, NO DETOUR and ASPA">
+  <meta name="author" content="Gaurav Kansal">
+  <meta name="copyright" content="© 2026 Gaurav Kansal">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script>try{var t=localStorage.getItem("theme");document.documentElement.dataset.theme=(!t||t==="auto")?(matchMedia("(prefers-color-scheme: dark)").matches?"midnight":"daylight"):t}catch(e){}</script>
+  <script>/* If page code fails to load (GitHub Pages can answer 503 just after a deploy), reload once; a second failure within a minute shows a note instead. */window.codeFailed=function(){try{var k="reloaded:"+location.pathname,t=+sessionStorage.getItem(k)||0;if(Date.now()-t>60000){sessionStorage.setItem(k,String(Date.now()));setTimeout(function(){location.reload()},1500);return}}catch(e){}var m=document.querySelector("main")||document.body,p=document.createElement("p");p.className="banner stale";p.textContent="Part of this page did not load (the server was busy). Please reload it in a minute.";m.prepend(p)}</script>
+  <script type="module" src="/assets/theme.js" onerror="codeFailed()"></script>
+  <script type="module" src="/assets/hygiene.js" onerror="codeFailed()"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">ASPA Monitor</a>
+    <nav><a href="/lookup/">Prefix lookup</a><a href="/aspa/">ASPA</a><a href="/hygiene/" aria-current="page">Hygiene</a></nav>
+  </header>
+  <main>
+    <h1>ASPA hygiene</h1>
+    <p id="hygiene-status" class="banner">Loading…</p>
+    <p class="muted small">Every hour, each published ASPA is compared with the upstreams seen in BGP from this portal's
+      RIPE RIS and RouteViews feeds. An ASPA should list every provider the AS uses; listing extra ones is allowed.
+      This describes routing data, not intent.</p>
+
+    <section>
+      <h2>Check an AS</h2>
+      <form id="hygiene-form" class="lookup aspa-lookup" autocomplete="off">
+        <label class="field"><span>AS number</span><input id="h-asn" name="asn" inputmode="numeric" placeholder="141476" required></label>
+        <button type="submit">Check</button>
+      </form>
+      <div id="hygiene-card" aria-live="polite"></div>
+    </section>
+
+    <section>
+      <h2>By registry and country</h2>
+      <div id="hygiene-controls" class="h-controls"></div>
+      <div id="hygiene-tiles" class="tiles" aria-live="polite"></div>
+      <div id="hygiene-countries"></div>
+    </section>
+
+    <section>
+      <h2>Observed providers not in the ASPA</h2>
+      <p class="muted small">ASes whose ASPA does not list an upstream that CAIDA labels a provider, and that our feeds saw.
+        Strongest evidence first; low-evidence cases are listed apart.</p>
+      <div id="hygiene-missing"></div>
+    </section>
+
+    <section class="h-method">
+      <h2>How this is computed</h2>
+      <p>Every hour we compare each published ASPA with the upstreams we see in BGP. In an AS path, the AS to the left of
+        a network received the route directly from it; we call that an observed upstream. The paths come from this
+        portal's route-collector feeds (RIPE RIS and RouteViews; paths with AS_SETs, loops or private ASNs are skipped).
+        CAIDA's AS-relationship inference tells us whether each upstream is a provider, a peer or a customer. A provider
+        we observe that the ASPA does not list is shown as "observed on &lt;date&gt; via AS Y, not in ASPA".</p>
+      <p><strong>Evidence.</strong> A hop seen by at least 2/3 of the feeds is strong, by at least 1/4 partial, by fewer
+        weak. Weak hops may be backup or regional links that most of the Internet never sees, and cannot be confirmed
+        from collector data.</p>
+      <p><strong>Caveats.</strong> We only see paths that reach our collectors. CAIDA's labels are inferred and can be
+        wrong; for example, large domestic networks that peer may appear as providers. Each hop therefore shows its share
+        of the network's routes and how many feeds saw it. Extra providers in an ASPA (listed but not seen) are allowed
+        and usually mean backup links. This page describes routing data, not intent.</p>
+      <p class="muted small">Registry and country: the NRO combined delegation statistics. ASPAs: this project's validated
+        RPKI data (rpki-aspa-data). AS relationships: <span id="hygiene-citation">The CAIDA AS Relationships Dataset</span>
+        (<a href="https://www.caida.org/about/legal/aua/public_aua/">CAIDA Acceptable Use Agreement</a>).
+        Computed by <a href="https://github.com/aspa-monitor/aspa-validation">aspa-validation</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p class="credit">Designed, implemented and owned by <a href="https://www.gauravkansal.in/" rel="author">Gaurav Kansal</a>.</p>
+    <p class="disclaimer"><strong>Disclaimer:</strong> this is a best-effort project, provided as is and without
+      any warranty. Data can be delayed, incomplete or wrong. Check important findings against other sources
+      before acting on them.</p>
+    <p>Routing data: <a href="https://ris.ripe.net/">RIPE NCC RIS</a> and <a href="https://www.routeviews.org/">RouteViews</a>.
+      AS relationships: <a href="https://www.caida.org/catalog/datasets/as-relationships/">CAIDA</a>.
+      Times are IST (UTC+05:30).<!--built--></p>
+  </footer>
+</body>
+</html>

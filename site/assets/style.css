@@ -463,3 +463,22 @@ table.list td .asn .asname { font-family: var(--sans); }
 .pathgraph .pairmark.ok rect.pill { stroke: var(--v-valid); }
 .graph-legend .pm.wide { width: 28px; border-radius: 8px; }
 .pathgraph .pairmark text.wide { font-size: 12px; }
+
+/* ASPA hygiene page */
+.h-controls { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.ev { display: inline-block; font-size: 0.75em; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid;
+  text-transform: uppercase; letter-spacing: 0.03em; vertical-align: 1px; }
+.ev.strong { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); } /* confidence, not a verdict */
+.ev.partial { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
+.ev.weak { color: var(--muted); border-color: var(--chip-line); }
+.h-group { display: inline-block; font-weight: 700; padding: 3px 12px; border-radius: 999px; background: var(--chip); }
+.h-group.warn { color: var(--warn); background: var(--warn-soft); }
+.h-group.ok { color: var(--v-valid); background: color-mix(in srgb, var(--v-valid) 12%, var(--card)); }
+.h-card-box { margin-top: 14px; padding: 16px 18px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.h-card-box h3 { margin: 0 0 4px; }
+.h-card-box h4 { margin: 18px 0 6px; }
+table.list tr.h-not td { background: var(--warn-soft); }
+.h-miss { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 2px 0; }
+.h-weak { margin-top: 14px; }
+.h-weak summary { cursor: pointer; font-weight: 650; }
+.h-method p { max-width: 72ch; }
