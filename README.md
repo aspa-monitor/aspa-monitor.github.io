@@ -59,6 +59,10 @@ The public web portal of the ASPA Monitor project: **https://aspa-monitor.gaurav
   (`site/assets/aspa.js`, client in `site/assets/bgpkit.js`; ASes with ASPA, the day's path verdicts in BGPKIT's five buckets, daily trend, top invalid
   customer/provider pairs, and the ASPA of any AS). Replaced by this project's own verdicts once aspa-validation
   publishes them.
+- Logo: the "No Detour" road sign of the GitHub organisation (a route leak is a detour; ASPA rules it out). `site/favicon.svg`
+  is the small mark (diamond and up arrow; also the header mark), `site/assets/logo.svg` the full sign on the home page
+  (letters drawn as strokes, no font), with PNG copies for phones (`site/apple-touch-icon.png`, 180 px) and link
+  previews (`site/assets/logo-512.png`, the `og:image`).
 - Colour themes: Auto (follows the system), Daylight, Midnight, Ocean, Sand. Picker in the header (`site/assets/theme.js`),
   saved in `localStorage`; theme colours are CSS variables per `[data-theme]` in `site/assets/style.css`.
 
@@ -125,6 +129,6 @@ No dependencies beyond the Python 3.12+ standard library (and Node 22 for the JS
 - Repository Settings → Pages → Source: **GitHub Actions**.
 - Custom domain `aspa-monitor.gauravkansal.in`: DNS `CNAME` record → `aspa-monitor.github.io`, domain set in
   Settings → Pages (with "Enforce HTTPS"). With Actions deployments GitHub ignores a `CNAME` file, so there is none.
-- The domain is hard-coded in: `site/*.html` (`canonical`, `og:url`, JSON-LD `url`), `site/robots.txt`,
+- The domain is hard-coded in: `site/*.html` (`canonical`, `og:url`, `og:image`, JSON-LD `url`), `site/robots.txt`,
   `site/sitemap.xml`, `LIVE_MANIFEST_URL` / `LIVE_ASPA_URL` in `.github/workflows/pages.yml` and `USER_AGENT` in `pipeline/ris/fetch.py`.
   Pages and data use root-relative links (`/lookup/`, `/data/...`), so nothing else changes with the domain.

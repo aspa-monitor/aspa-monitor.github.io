@@ -80,10 +80,11 @@ header.top {
   border-bottom: 1px solid var(--line);
 }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 750; letter-spacing: -0.01em; color: var(--fg); }
+/* The "No Detour" sign (favicon.svg): the same yellow mark in every theme, like the GitHub organisation logo. */
 .brand::before {
-  content: ""; width: 26px; height: 26px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 40%, transparent);
+  content: ""; width: 30px; height: 30px; flex: none;
+  background: url("/favicon.svg") center / contain no-repeat;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
 }
 .brand:hover { text-decoration: none; }
 nav { display: flex; gap: 6px; }
@@ -230,8 +231,11 @@ a.card:hover { text-decoration: none; border-color: var(--accent); transform: tr
 .card.disabled { opacity: 0.75; }
 .card.disabled h2 { color: var(--muted); }
 .card p { margin: 0; color: var(--muted); }
+.hero-row { display: flex; align-items: center; gap: 18px; margin-top: 28px; }
+.hero-logo { width: 112px; height: 112px; flex: none; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.18)); }
+@media (max-width: 560px) { .hero-logo { width: 76px; height: 76px; } .hero-row { gap: 12px; } }
 h1.hero {
-  font-size: 2.6rem; margin-top: 40px;
+  font-size: 2.6rem; margin: 0;
   background: linear-gradient(120deg, var(--fg) 30%, var(--accent) 70%, var(--accent-2));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }

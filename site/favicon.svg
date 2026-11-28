@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#4f46e5"/><path d="M6 22h6l4-12 4 12h6" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<title>ASPA Monitor</title>
+<rect x="10.5" y="10.5" width="43" height="43" rx="7" transform="rotate(45 32 32)" fill="#141414"/>
+<rect x="13" y="13" width="38" height="38" rx="5" transform="rotate(45 32 32)" fill="#FFC72C"/>
+<path d="M32 47V27" stroke="#141414" stroke-width="7" stroke-linecap="round"/>
+<path d="M21.5 30L32 17.5L42.5 30Z" fill="#141414" stroke="#141414" stroke-width="2.5" stroke-linejoin="round"/>
+</svg>

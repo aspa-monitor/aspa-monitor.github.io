@@ -13,10 +13,13 @@
   <meta property="og:description" content="Hourly BGP routing snapshots from RIPE RIS and RouteViews, and ASPA path verification based on the RPKI: prefix lookup, AS paths, origins and route flags. Developed by Gaurav Kansal.">
   <meta property="og:url" content="https://aspa-monitor.gauravkansal.in/">
   <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="https://aspa-monitor.gauravkansal.in/assets/logo-512.png">
+  <meta property="og:image:alt" content="ASPA Monitor logo: a yellow road sign with an up arrow, NO DETOUR and ASPA">
   <meta name="author" content="Gaurav Kansal">
   <meta name="copyright" content="© 2026 Gaurav Kansal">
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "ASPA Monitor", "url": "https://aspa-monitor.gauravkansal.in/", "description": "Hourly BGP routing snapshots from RIPE RIS and RouteViews, and ASPA path verification based on the RPKI.", "author": {"@type": "Person", "name": "Gaurav Kansal", "url": "https://www.gauravkansal.in/"}, "creator": {"@type": "Person", "name": "Gaurav Kansal", "url": "https://www.gauravkansal.in/"}, "maintainer": {"@type": "Person", "name": "Gaurav Kansal", "url": "https://www.gauravkansal.in/"}}</script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="stylesheet" href="/assets/style.css">
   <script>try{var t=localStorage.getItem("theme");document.documentElement.dataset.theme=(!t||t==="auto")?(matchMedia("(prefers-color-scheme: dark)").matches?"midnight":"daylight"):t}catch(e){}</script>
   <script>/* If page code fails to load (GitHub Pages can answer 503 just after a deploy), reload once; a second failure within a minute shows a note instead. */window.codeFailed=function(){try{var k="reloaded:"+location.pathname,t=+sessionStorage.getItem(k)||0;if(Date.now()-t>60000){sessionStorage.setItem(k,String(Date.now()));setTimeout(function(){location.reload()},1500);return}}catch(e){}var m=document.querySelector("main")||document.body,p=document.createElement("p");p.className="banner stale";p.textContent="Part of this page did not load (the server was busy). Please reload it in a minute.";m.prepend(p)}</script>
@@ -29,7 +32,11 @@
     <nav><a href="/lookup/">Prefix lookup</a><a href="/aspa/">ASPA</a></nav>
   </header>
   <main>
-    <h1 class="hero">ASPA Monitor</h1>
+    <div class="hero-row">
+      <img class="hero-logo" src="/assets/logo.svg" width="112" height="112"
+        alt="A yellow road sign with an up arrow, NO DETOUR and ASPA">
+      <h1 class="hero">ASPA Monitor</h1>
+    </div>
     <p class="lead">Hourly BGP routing snapshots from RIPE RIS and RouteViews, and (soon) ASPA path verification results
       based on the RPKI.</p>
 
