@@ -13,7 +13,7 @@ from pathlib import Path
 
 from pipeline import asnames, aspa
 from pipeline.ris import fetch, shard
-from pipeline.timefmt import now_ist
+from pipeline.timefmt import IST, now_ist, parse_iso
 
 REPO = Path(__file__).resolve().parent.parent
 PAGES_LIMIT_MB = 1000
@@ -42,6 +42,19 @@ def stamp_assets(out: Path) -> str:
         text = re.sub(r'from "(\./[\w.-]+\.js)"', rf'from "\1?v={v}"', text)
         js.write_text(text)
     return v
+
+
+BUILT_MARK = "<!--built-->"
+
+
+def stamp_built(out: Path, built_at: str) -> None:
+    """Write the build time (IST) into every page's footer, where the page has the <!--built--> mark."""
+    dt = parse_iso(built_at).astimezone(IST)
+    text = f' Portal last built: <time datetime="{built_at}">{dt:%Y-%m-%d %H:%M} IST</time>.'
+    for page in out.rglob("*.html"):
+        html = page.read_text()
+        if BUILT_MARK in html:
+            page.write_text(html.replace(BUILT_MARK, text))
 
 
 PEER_COLOURS = 16  # style.css --peer-1 .. --peer-16, all solid
@@ -120,7 +133,8 @@ def main(argv=None) -> int:
     shutil.copytree(REPO / "site", args.out)
     (args.out / ".nojekyll").write_text("")
     print(f"asset version {stamp_assets(args.out)}")
-    build_ris(args.ris_work, args.out / "data" / "ris", live_colours(args.live_manifest_url))
+    manifest = build_ris(args.ris_work, args.out / "data" / "ris", live_colours(args.live_manifest_url))
+    stamp_built(args.out, manifest["built_at"])  # same time as the home page's "site built"
     if args.asnames:
         asnames.build(args.asnames, args.out / "data" / "asnames")
     aspa.build(args.aspa, args.out / "data" / "aspa", args.live_aspa_url)

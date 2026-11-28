@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from pipeline.build_site import REPO, stamp_assets
+from pipeline.build_site import BUILT_MARK, REPO, stamp_assets, stamp_built
 
 
 class TestStampAssets(unittest.TestCase):
@@ -74,3 +74,22 @@ class TestCodeFailureGuard(unittest.TestCase):
             v = stamp_assets(out)
             html = (out / "lookup" / "index.html").read_text()
             self.assertIn(f'src="/assets/lookup.js?v={v}" onerror="codeFailed()"', html)
+
+
+class TestStampBuilt(unittest.TestCase):
+    """The footer of every page shows when the portal was built, in IST."""
+
+    def test_every_page_footer_gets_the_build_time(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            import shutil
+            shutil.copytree(REPO / "site", out, dirs_exist_ok=True)
+            pages = sorted(out.rglob("*.html"))
+            self.assertTrue(pages)
+            for page in pages:
+                self.assertIn(BUILT_MARK, page.read_text(), page.name)
+            stamp_built(out, "2026-11-28T09:05:07+00:00")  # any offset; shown in IST
+            for page in pages:
+                html = page.read_text()
+                self.assertNotIn(BUILT_MARK, html)
+                self.assertIn('Portal last built: <time datetime="2026-11-28T09:05:07+00:00">2026-11-28 14:35 IST</time>.', html)

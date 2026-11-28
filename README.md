@@ -96,6 +96,9 @@ Each block file is self-contained, with paths referenced by index:
 
 ## Times
 Every time a person sees is IST (UTC+05:30); JSON timestamps are ISO 8601 with `+05:30`. GitHub cron is UTC.
+Every page's footer says when the portal was last built (`stamp_built` in `pipeline/build_site.py` fills the
+`<!--built-->` mark; the same time as the manifest's `built_at`). Scheduled runs with no new data don't rebuild, so it
+is the last deploy.
 
 ## Local use
 ```bash
