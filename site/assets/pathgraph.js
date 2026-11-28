@@ -3,12 +3,12 @@
 // Each peer's path has its own colour (fixed per peer: manifest "colour", kept across builds); where paths share a hop
 // their lines run side by side. Pointing at (or tapping) a peer chip or box highlights that one path.
 // Peers whose paths are identical after their own AS are merged into one box and one set of lines for this
-// search (peergroups.js); at most MAX_GROUPS are drawn until the reader asks for all of them.
+// search (peergroups.js) when the reader picks "All sources"; by default at most MAX_GROUPS single peers are drawn.
 import { asName, shortName } from "./asnames.js";
 import { checkRov, rovDate } from "./rov.js";
 import { pairFor, combineMarks } from "./aspapath.js";
 import { REL, relation, aspaDisagrees } from "./asrel.js";
-import { hops, groupPeers, pickGroups, packLines } from "./peergroups.js";
+import { hops, groupPeers, singlePeers, pickPeers, packLines } from "./peergroups.js";
 
 export { hops };
 export const MAX_GROUPS = 6;
@@ -122,19 +122,20 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
  * Build the graph block (a <figure>) for the lookup page, or null when there is nothing to draw.
  * peerEntries: one per distinct path per peer, in manifest order:
  *   [{label, name (display name or null), source, prefix, path, slot, aspa (path verdict or null), split}].
- * Peers with the same path after their own AS are merged (fresh for this search); more than MAX_GROUPS
- * groups are cut to the MAX_GROUPS that show the most ASes, with a button to redraw all of them.
+ * peers "best" (default): at most MAX_GROUPS peers, each with its own box and line, chosen so their paths differ
+ * as much as possible (pickPeers). peers "all": every peer, with peers whose paths match after their own AS
+ * merged into one box (fresh for this search).
  */
-export function renderPathGraph(peerEntries, { width = 900, showAll = false, variant = "paths", direction = "auto",
-  controls = null, onShowAll = null } = {}) {
-  // controls: an element put above the caption (renderGraphPanel's tabs); onShowAll(next): who redraws on the toggle.
+export function renderPathGraph(peerEntries, { width = 900, peers = "best", variant = "paths", direction = "lr",
+  controls = null } = {}) {
+  // controls: an element put above the caption (renderGraphPanel's tabs and choices).
   // variant "rel": the second map (trial) — same boxes and chips, but one line per AS pair coloured by the
   // inferred AS relationship (asrel.js), instead of one line per peer path.
   const rel = variant === "rel";
   peerEntries = peerEntries.filter((e) => hops(e.path).length);
   if (!peerEntries.length) return null;
-  const allGroups = groupPeers(peerEntries);
-  const groups = showAll ? allGroups : pickGroups(allGroups, MAX_GROUPS);
+  const allGroups = groupPeers(peerEntries); // distinct paths, for the counts and the ASPA tally
+  const groups = peers === "all" ? allGroups : pickPeers(singlePeers(peerEntries), MAX_GROUPS);
   // One drawn entry per group: the first member's path and colour.
   const entries = groups.map((gr) => {
     const members = gr.members.map((i) => peerEntries[i]);
@@ -148,9 +149,9 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false, var
   fig.className = "graph-card";
   const prefixes = [...new Set(entries.map((e) => e.prefix))];
   const peerCount = new Set(peerEntries.map((e) => e.source ?? e.label)).size;
-  const cut = allGroups.length > groups.length;
+  const cut = peers !== "all" && peerEntries.length > groups.length;
   const counts = `${plural(peerCount, "peer")}, ${plural(allGroups.length, "distinct path")}` +
-    (cut ? ` (the ${groups.length} covering the most ASes shown)` : "");
+    (cut ? ` (${groups.length} peers with the most different paths shown)` : "");
   const merged = entries.some((e) => e.members.length > 1);
   // ASPA path verdicts (from lookup.js; members of a group always share one, see entry.split).
   const verdictOf = (gr) => peerEntries[gr.members[0]].aspa;
@@ -176,8 +177,6 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false, var
       `<button type="button" class="peer-chip" data-i="${i}">${e.members.map((m) =>
         `<i class="swatch" style="--sw:${peerColour(m.slot)}"></i>`).join("")}` +
       `${esc(e.label)}${prefixes.length > 1 ? ` <span class="muted">(${esc(e.prefix)})</span>` : ""}${vtag(e.members[0].aspa)}</button>`).join("")}</div>
-    ${allGroups.length > MAX_GROUPS ? `<p class="graph-more"><button type="button" class="graph-toggle">${showAll
-      ? `Show the ${MAX_GROUPS} main paths` : `Show all ${allGroups.length} paths`}</button></p>` : ""}
     <div class="graph-legend small muted">${rel ? Object.entries(REL).map(([k, r]) =>
       `<span><b class="relkey ${k}">${r.glyph}</b>${esc(r.name)}</span>`).join("") +
       '<span><b class="relkey flag">!</b>disagrees with ASPA</span></div>' : `
@@ -185,12 +184,6 @@ export function renderPathGraph(peerEntries, { width = 900, showAll = false, var
     </div>`}`;
   fig.querySelector(".graph-scroll").appendChild(svg);
   if (controls) fig.prepend(controls);
-  fig.querySelector(".graph-toggle")?.addEventListener("click", () => {
-    if (onShowAll) { onShowAll(!showAll); return; }
-    const next = renderPathGraph(peerEntries, { width, showAll: !showAll, variant, direction });
-    fig.replaceWith(next);
-    next.querySelector(".graph-toggle")?.focus({ preventScroll: true });
-  });
 
   requestAnimationFrame(() => {
     const box = fig.querySelector(".graph-scroll");
@@ -272,16 +265,15 @@ function edgeAspa(e, entries, byId, asnOf) {
 }
 
 /** The SVG for drawn entries [{label, prefix, path, peers, members, slot}]. */
-function drawGraph(entries, width, variant = "paths", direction = "auto") {
+function drawGraph(entries, width, variant = "paths", direction = "lr") {
   const { nodes, edges, layers } = layout(entries);
   const widest = Math.max(...layers.map((l) => l.filter((n) => !n.dummy).length));
 
-  // direction "auto": horizontal (peers left, origin right) when the boxes can be at least 124 px wide; otherwise
-  // top-to-bottom (phones), which is usually narrower. "lr" / "tb" force one (the graph may then scroll).
-  // Box width stretches to use the space.
+  // direction "lr" (default): peers left, origin right; "tb": peers on top, origin at the bottom. Box width
+  // stretches to use the space; when it can't fit (phones) the graph scrolls sideways.
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const hW = Math.floor((width - 44 * (layers.length - 1)) / layers.length);
-  const vertical = direction === "tb" || (direction !== "lr" && hW < 124);
+  const vertical = direction === "tb";
   const maxLayer = layers.length - 1;
   const g = vertical
     ? { nodeW: clamp(Math.floor((width - 10 * (widest - 1)) / widest), 104, 160), nodeH: 44, gapMain: 40, gapCross: 10 }
@@ -498,17 +490,19 @@ function drawGraph(entries, width, variant = "paths", direction = "auto") {
   return svg;
 }
 
-const DIRS = [["auto", "Auto"], ["lr", "Left to right"], ["tb", "Top to bottom"]];
+const DIRS = [["lr", "Left to right"], ["tb", "Top to bottom"]];
+const PEERS = [["best", `${MAX_GROUPS} best peers`], ["all", "All sources (same paths merged)"]];
 const DIR_KEY = "graphDirection";
 
 /**
- * The lookup graph card: tabs for the path graph and (optionally) the AS relationship map, and a layout choice
- * (auto / left to right / top to bottom, remembered in localStorage). Tab, layout and "Show all" carry over.
+ * The lookup graph card: tabs for the path graph and (optionally) the AS relationship map, which peers to draw
+ * (the best MAX_GROUPS, or all sources merged) and the layout (left to right / top to bottom, remembered in
+ * localStorage). The choices carry over between tabs.
  */
 export function renderGraphPanel(entries, { width = 900, withRel = false } = {}) {
-  let stored = "auto";
-  try { stored = localStorage.getItem(DIR_KEY) || "auto"; } catch { /* storage blocked */ }
-  const state = { variant: "paths", direction: DIRS.some(([k]) => k === stored) ? stored : "auto", showAll: false };
+  let stored = "lr";
+  try { stored = localStorage.getItem(DIR_KEY) || "lr"; } catch { /* storage blocked */ }
+  const state = { variant: "paths", direction: DIRS.some(([k]) => k === stored) ? stored : "lr", peers: "best" };
   const wrap = document.createElement("div");
   wrap.className = "graph-panel";
   const draw = (focusSel) => {
@@ -517,20 +511,25 @@ export function renderGraphPanel(entries, { width = 900, withRel = false } = {})
     bar.innerHTML = (withRel ? `<div class="graph-tabs" role="tablist" aria-label="Graph">${[["paths", "AS paths"],
       ["rel", 'AS relationships <span class="tag">trial</span>']].map(([k, t]) =>
       `<button type="button" role="tab" class="graph-tab" data-v="${k}" aria-selected="${state.variant === k}">${t}</button>`).join("")}</div>` : "") +
+      `<label class="graph-peers-pick"><span class="muted small">Peers</span><select class="graph-peers-sel">${PEERS.map(([k, t]) =>
+        `<option value="${k}"${state.peers === k ? " selected" : ""}>${t}</option>`).join("")}</select></label>` +
       `<div class="graph-dir" role="group" aria-label="Layout"><span class="muted small">Layout</span>${DIRS.map(([k, t]) =>
         `<button type="button" class="graph-dir-btn" data-d="${k}" aria-pressed="${state.direction === k}">${t}</button>`).join("")}</div>`;
     bar.querySelectorAll(".graph-tab").forEach((b) => b.addEventListener("click", () => {
       if (state.variant === b.dataset.v) return;
       state.variant = b.dataset.v; draw(`.graph-tab[data-v="${b.dataset.v}"]`);
     }));
+    bar.querySelector(".graph-peers-sel").addEventListener("change", (ev) => {
+      state.peers = ev.target.value; draw(".graph-peers-sel");
+    });
     bar.querySelectorAll(".graph-dir-btn").forEach((b) => b.addEventListener("click", () => {
       if (state.direction === b.dataset.d) return;
       state.direction = b.dataset.d;
       try { localStorage.setItem(DIR_KEY, state.direction); } catch { /* storage blocked */ }
       draw(`.graph-dir-btn[data-d="${b.dataset.d}"]`);
     }));
-    const fig = renderPathGraph(entries, { width, showAll: state.showAll, variant: state.variant, direction: state.direction,
-      controls: bar, onShowAll: (next) => { state.showAll = next; draw(".graph-toggle"); } });
+    const fig = renderPathGraph(entries, { width, peers: state.peers, variant: state.variant, direction: state.direction,
+      controls: bar });
     wrap.replaceChildren(fig);
     if (focusSel) wrap.querySelector(focusSel)?.focus({ preventScroll: true });
   };

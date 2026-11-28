@@ -335,9 +335,6 @@ h1.hero {
 }
 .peer-chip .swatch { display: inline-block; width: 16px; height: 0; border-top: 3px solid var(--sw); border-radius: 2px; margin-right: 7px; vertical-align: 3px; }
 .peer-chip .swatch + .swatch { margin-left: -3px; }
-.graph-more { margin: 10px 0 0; }
-.graph-toggle { font-size: 0.85em; padding: 6px 14px; background: var(--card-2); color: var(--accent); border: 1px solid var(--chip-line); box-shadow: none; }
-.graph-toggle:hover { border-color: var(--accent); box-shadow: none; }
 .pathgraph .stripe { stroke-width: 4; stroke-linecap: round; }
 .peer-chip:hover, .peer-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .graph-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; }
@@ -432,3 +429,6 @@ table.list td .asn .asname { font-family: var(--sans); }
 .graph-dir { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .graph-dir > span { margin-right: 4px; }
 .graph-dir-btn { padding: 4px 10px; }
+.graph-peers-pick { display: flex; align-items: center; gap: 6px; }
+.graph-peers-sel { font: inherit; font-size: 0.85em; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--chip-line);
+  background: var(--card-2); color: var(--fg); max-width: 100%; }

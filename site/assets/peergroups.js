@@ -70,6 +70,46 @@ export function pickGroups(groups, cap = 6) {
   return picked.sort((a, b) => a.i - b.i).map((c) => c.g);
 }
 
+/** One group per entry (no merging), same shape as groupPeers' groups. Entries with an empty path are left out. */
+export function singlePeers(entries) {
+  const out = [];
+  entries.forEach((e, i) => {
+    const h = hops(e.path);
+    if (h.length) out.push({ members: [i], peers: [h[0]], tail: h.slice(1), prefix: e.prefix, path: e.path });
+  });
+  return out;
+}
+
+/**
+ * The default graph: at most `cap` single peers, chosen so the paths shown are as different as possible.
+ * Each next pick is the peer whose path (after its own AS) adds the most ASes not shown yet; ties go to a path
+ * not shown yet (so two peers with the same path are only both picked when nothing new is left), then to
+ * manifest order. Returned in their original order.
+ */
+export function pickPeers(groups, cap = 6) {
+  if (groups.length <= cap) return groups.slice();
+  const shown = new Set(), paths = new Set();
+  const key = (g) => `${g.prefix}|${g.tail.join(" ")}`;
+  const left = groups.map((g, i) => ({ g, i }));
+  const picked = [];
+  while (picked.length < cap && left.length) {
+    let best = 0, bestScore = null;
+    left.forEach((c, k) => {
+      let gain = 0;
+      for (const a of c.g.tail) if (!shown.has(a)) gain++;
+      const score = [gain, paths.has(key(c.g)) ? 0 : 1];
+      if (!bestScore || score[0] > bestScore[0] || (score[0] === bestScore[0] && score[1] > bestScore[1])) {
+        best = k; bestScore = score;
+      }
+    });
+    const [c] = left.splice(best, 1);
+    for (const a of c.g.tail) shown.add(a);
+    paths.add(key(c.g));
+    picked.push(c);
+  }
+  return picked.sort((a, b) => a.i - b.i).map((c) => c.g);
+}
+
 /** Pack tokens into lines of at most `max` characters, joined by " + " (a token longer than max gets its own line). */
 export function packLines(tokens, max) {
   const lines = [];

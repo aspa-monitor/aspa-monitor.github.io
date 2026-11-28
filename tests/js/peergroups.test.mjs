@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hops, groupPeers, pickGroups, packLines, groupAses } from "../../site/assets/peergroups.js";
+import { hops, groupPeers, pickGroups, packLines, groupAses, singlePeers, pickPeers } from "../../site/assets/peergroups.js";
 
 const P = "1.10.10.0/24";
 const e = (path, prefix = P) => ({ prefix, path });
@@ -68,4 +68,25 @@ test("packLines wraps member AS numbers", () => {
   assert.deepEqual(packLines(["AS7018", "AS6453"], 20), ["AS7018 + AS6453"]);
   assert.deepEqual(packLines(["AS7018", "AS6453", "AS3333"], 13), ["AS7018 +", "AS6453 +", "AS3333"]);
   assert.deepEqual(packLines(["AS1", "AS2", "AS3"], 9), ["AS1 + AS2 +", "AS3"]);
+});
+
+test("singlePeers keeps every peer apart", () => {
+  const g = singlePeers([e("7018 3356 9498"), e("6453 3356 9498"), e("")]);
+  assert.equal(g.length, 2);
+  assert.deepEqual(g.map((x) => x.members), [[0], [1]]);
+  assert.deepEqual(g[1].tail, ["3356", "9498"]);
+});
+
+test("pickPeers prefers new ASes, then paths not shown yet, then manifest order", () => {
+  const g = singlePeers([
+    e("1 100 9"), e("2 100 9"), e("3 100 9"), // same path after the peer
+    e("4 200 300 9"), e("5 400 9"), e("6 500 9"), e("7 600 9"), e("8 700 9"),
+  ]);
+  const picked = pickPeers(g, 6).map((x) => x.peers[0]);
+  assert.deepEqual(picked, ["1", "4", "5", "6", "7", "8"]); // 2 and 3 repeat peer 1's path
+  assert.deepEqual(pickPeers(g.slice(0, 3), 6).length, 3); // under the cap: everyone
+  // Once every AS is shown, a path not shown yet still beats a repeat.
+  const h = singlePeers([e("1 100 9"), e("2 100 9"), e("3 9"), e("4 100 9")]);
+  // 1 first (most new ASes), then 3 (its path "9" is new), then 2 (earliest of the repeats).
+  assert.deepEqual(pickPeers(h, 3).map((x) => x.peers[0]), ["1", "2", "3"]);
 });
